@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harold Mileage Log</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background-color: #C8102E;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 50px;
+            background-color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background-color: #C8102E;
+            color: white;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+            color: #555;
+        }
+
+        input, select {
+            padding: 0.625rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #C8102E;
+            box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
+        }
+
+        input:invalid:not(:placeholder-shown),
+        select:invalid {
+            border-color: #C8102E;
+        }
+
+        .distance-display {
+            background-color: #f8f8f8;
+            border: 2px solid #C8102E;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        .distance-display .label {
+            font-size: 0.875rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .distance-display .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #C8102E;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background-color: #C8102E;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #a00d25;
+        }
+
+        .btn-primary:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: #C8102E;
+            border: 2px solid #C8102E;
+        }
+
+        .btn-secondary:hover {
+            background-color: #fef2f2;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .error-message {
+            color: #C8102E;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            background-color: #C8102E;
+            color: white;
+            padding: 0.75rem 0.5rem;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background-color: #fef2f2;
+        }
+
+        .no-entries {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .month-nav button {
+            background: none;
+            border: 2px solid #C8102E;
+            color: #C8102E;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .month-nav button:hover {
+            background-color: #C8102E;
+            color: white;
+        }
+
+        .month-nav .month-label {
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #C8102E;
+            cursor: pointer;
+            font-size: 1.125rem;
+            padding: 0.25rem;
+        }
+
+        .delete-btn:hover {
+            color: #a00d25;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: #333;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background-color: #22c55e;
+        }
+
+        .toast.error {
+            background-color: #C8102E;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .stat-box .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #C8102E;
+        }
+
+        .stat-box .stat-label {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            th, td {
+                padding: 0.5rem 0.25rem;
+            }
+
+            .btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-text">
+            <h1>Harold Mileage Log</h1>
+            <p>Bedfordshire Fire & Rescue Service</p>
+        </div>
+        <img src="/Users/benpaynter/Downloads/logo.png" alt="Bedfordshire Fire & Rescue Service" class="header-logo">
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <div class="card-header">New Entry</div>
+            <div class="card-body">
+                <form id="mileageForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="date">Date</label>
+                            <input type="date" id="date" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vehicle">Vehicle</label>
+                            <select id="vehicle" required>
+                                <option value="">Select...</option>
+                                <option value="05P1">05P1</option>
+                                <option value="05D1">05D1</option>
+                                <option value="05V1">05V1</option>
+                                <option value="05T6">05T6</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <select id="name" required>
+                                <option value="">Select...</option>
+                                <option value="WC Paynter">WC Paynter</option>
+                                <option value="CC Kelly">CC Kelly</option>
+                                <option value="FF M Postles">FF M Postles</option>
+                                <option value="FF Uncles">FF Uncles</option>
+                                <option value="FF Kuhne">FF Kuhne</option>
+                                <option value="CC Norman">CC Norman</option>
+                                <option value="FF Waters">FF Waters</option>
+                                <option value="FF S Postles">FF S Postles</option>
+                                <option value="FF Lammin">FF Lammin</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="destination">Destination</label>
+                            <input type="text" id="destination" placeholder="Where did you go?" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reason">Reason for Journey</label>
+                            <input type="text" id="reason" placeholder="Purpose of trip" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="startMileage">Start Mileage</label>
+                            <input type="number" id="startMileage" placeholder="0" min="0" step="1" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="endMileage">End Mileage</label>
+                            <input type="number" id="endMileage" placeholder="0" min="0" step="1" required>
+                            <span class="error-message" id="mileageError">End mileage must be greater than or equal to start mileage</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fuel">Did you get fuel?</label>
+                            <select id="fuel" required>
+                                <option value="">Select...</option>
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="distance-display">
+                                <div class="label">Distance Travelled</div>
+                                <div class="value" id="distanceValue">0 miles</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Save Entry</button>
+                        <button type="button" class="btn btn-secondary" id="clearBtn">Clear Form</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">Monthly Log</div>
+            <div class="card-body">
+                <div class="month-nav">
+                    <button id="prevMonth" aria-label="Previous month">&lt;</button>
+                    <span class="month-label" id="monthLabel">January 2024</span>
+                    <button id="nextMonth" aria-label="Next month">&gt;</button>
+                </div>
+
+                <div class="summary-stats" id="summaryStats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="totalTrips">0</div>
+                        <div class="stat-label">Trips</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="totalMiles">0</div>
+                        <div class="stat-label">Miles</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="fuelStops">0</div>
+                        <div class="stat-label">Fuel Stops</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="entriesTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Vehicle</th>
+                                <th>Name</th>
+                                <th>Destination</th>
+                                <th>Reason</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Distance</th>
+                                <th>Fuel</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="entriesBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="no-entries" id="noEntries">No entries for this month</div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" id="exportBtn">Export to CSV</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // State
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        const STORAGE_KEY = 'fireStationMileageLog';
+
+        // DOM Elements
+        const form = document.getElementById('mileageForm');
+        const dateInput = document.getElementById('date');
+        const vehicleSelect = document.getElementById('vehicle');
+        const nameInput = document.getElementById('name');
+        const destinationInput = document.getElementById('destination');
+        const reasonInput = document.getElementById('reason');
+        const startMileageInput = document.getElementById('startMileage');
+        const endMileageInput = document.getElementById('endMileage');
+        const fuelSelect = document.getElementById('fuel');
+        const distanceValue = document.getElementById('distanceValue');
+        const mileageError = document.getElementById('mileageError');
+        const entriesBody = document.getElementById('entriesBody');
+        const noEntries = document.getElementById('noEntries');
+        const monthLabel = document.getElementById('monthLabel');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const exportBtn = document.getElementById('exportBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const toast = document.getElementById('toast');
+        const totalTripsEl = document.getElementById('totalTrips');
+        const totalMilesEl = document.getElementById('totalMiles');
+        const fuelStopsEl = document.getElementById('fuelStops');
+
+        // Initialize
+        function init() {
+            setDefaultDate();
+            loadSavedName();
+            loadLastEndMileage();
+            updateMonthLabel();
+            renderEntries();
+            attachEventListeners();
+        }
+
+        function loadLastEndMileage() {
+            const vehicle = vehicleSelect.value;
+            if (!vehicle) {
+                startMileageInput.value = '';
+                calculateDistance();
+                return;
+            }
+
+            const entries = getEntries().filter(e => e.vehicle === vehicle);
+            if (entries.length > 0) {
+                // Sort by date descending, then by id descending to get the most recent entry
+                entries.sort((a, b) => {
+                    const dateCompare = new Date(b.date) - new Date(a.date);
+                    if (dateCompare !== 0) return dateCompare;
+                    return b.id - a.id;
+                });
+                startMileageInput.value = entries[0].endMileage;
+                calculateDistance();
+            } else {
+                startMileageInput.value = '';
+                calculateDistance();
+            }
+        }
+
+        function setDefaultDate() {
+            const today = new Date();
+            dateInput.value = today.toISOString().split('T')[0];
+        }
+
+        function loadSavedName() {
+            const savedName = localStorage.getItem('mileageLogUserName');
+            if (savedName) {
+                nameInput.value = savedName;
+            }
+        }
+
+        function attachEventListeners() {
+            form.addEventListener('submit', handleSubmit);
+            clearBtn.addEventListener('click', clearForm);
+            vehicleSelect.addEventListener('change', loadLastEndMileage);
+            startMileageInput.addEventListener('input', calculateDistance);
+            endMileageInput.addEventListener('input', calculateDistance);
+            prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+            nextMonthBtn.addEventListener('click', () => changeMonth(1));
+            exportBtn.addEventListener('click', exportToCSV);
+        }
+
+        function calculateDistance() {
+            const start = parseInt(startMileageInput.value) || 0;
+            const end = parseInt(endMileageInput.value) || 0;
+            const distance = Math.max(0, end - start);
+            distanceValue.textContent = `${distance} mile${distance !== 1 ? 's' : ''}`;
+
+            // Validation
+            if (endMileageInput.value && startMileageInput.value && end < start) {
+                mileageError.classList.add('visible');
+                endMileageInput.setCustomValidity('End mileage must be >= start mileage');
+            } else {
+                mileageError.classList.remove('visible');
+                endMileageInput.setCustomValidity('');
+            }
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+
+            const start = parseInt(startMileageInput.value);
+            const end = parseInt(endMileageInput.value);
+
+            if (end < start) {
+                showToast('End mileage must be greater than or equal to start mileage', 'error');
+                return;
+            }
+
+            const entry = {
+                id: Date.now(),
+                date: dateInput.value,
+                vehicle: vehicleSelect.value,
+                name: nameInput.value.trim(),
+                destination: destinationInput.value.trim(),
+                reason: reasonInput.value.trim(),
+                startMileage: start,
+                endMileage: end,
+                distance: end - start,
+                fuel: fuelSelect.value
+            };
+
+            saveEntry(entry);
+            localStorage.setItem('mileageLogUserName', entry.name);
+
+            // Switch to the month of the new entry
+            const entryDate = new Date(entry.date);
+            currentMonth = entryDate.getMonth();
+            currentYear = entryDate.getFullYear();
+            updateMonthLabel();
+
+            renderEntries();
+            clearForm();
+            loadLastEndMileage();
+            showToast('Entry saved successfully', 'success');
+        }
+
+        function saveEntry(entry) {
+            const entries = getEntries();
+            entries.push(entry);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        }
+
+        function getEntries() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function getEntriesForMonth(month, year) {
+            const entries = getEntries();
+            return entries.filter(entry => {
+                const date = new Date(entry.date);
+                return date.getMonth() === month && date.getFullYear() === year;
+            }).sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        function renderEntries() {
+            const entries = getEntriesForMonth(currentMonth, currentYear);
+            entriesBody.innerHTML = '';
+
+            if (entries.length === 0) {
+                noEntries.style.display = 'block';
+                document.getElementById('entriesTable').style.display = 'none';
+            } else {
+                noEntries.style.display = 'none';
+                document.getElementById('entriesTable').style.display = 'table';
+
+                entries.forEach(entry => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${formatDate(entry.date)}</td>
+                        <td>${escapeHtml(entry.vehicle || '')}</td>
+                        <td>${escapeHtml(entry.name)}</td>
+                        <td>${escapeHtml(entry.destination)}</td>
+                        <td>${escapeHtml(entry.reason)}</td>
+                        <td>${entry.startMileage.toLocaleString()}</td>
+                        <td>${entry.endMileage.toLocaleString()}</td>
+                        <td>${entry.distance.toLocaleString()}</td>
+                        <td>${entry.fuel}</td>
+                        <td><button class="delete-btn" onclick="deleteEntry(${entry.id})" aria-label="Delete entry">&times;</button></td>
+                    `;
+                    entriesBody.appendChild(row);
+                });
+            }
+
+            updateSummaryStats(entries);
+        }
+
+        function updateSummaryStats(entries) {
+            const totalTrips = entries.length;
+            const totalMiles = entries.reduce((sum, e) => sum + e.distance, 0);
+            const fuelStops = entries.filter(e => e.fuel === 'Yes').length;
+
+            totalTripsEl.textContent = totalTrips;
+            totalMilesEl.textContent = totalMiles.toLocaleString();
+            fuelStopsEl.textContent = fuelStops;
+        }
+
+        function deleteEntry(id) {
+            if (!confirm('Are you sure you want to delete this entry?')) return;
+
+            const entries = getEntries().filter(e => e.id !== id);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+            renderEntries();
+            showToast('Entry deleted', 'success');
+        }
+
+        function clearForm() {
+            vehicleSelect.value = '';
+            destinationInput.value = '';
+            reasonInput.value = '';
+            startMileageInput.value = '';
+            endMileageInput.value = '';
+            fuelSelect.value = '';
+            distanceValue.textContent = '0 miles';
+            mileageError.classList.remove('visible');
+            endMileageInput.setCustomValidity('');
+            setDefaultDate();
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            updateMonthLabel();
+            renderEntries();
+        }
+
+        function updateMonthLabel() {
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            monthLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function exportToCSV() {
+            const entries = getEntriesForMonth(currentMonth, currentYear);
+
+            if (entries.length === 0) {
+                showToast('No entries to export', 'error');
+                return;
+            }
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+            const headers = ['Date', 'Vehicle', 'Name', 'Destination', 'Reason for Journey', 'Start Mileage', 'End Mileage', 'Distance', 'Fuel'];
+            const rows = entries.map(e => [
+                e.date,
+                e.vehicle || '',
+                `"${e.name.replace(/"/g, '""')}"`,
+                `"${e.destination.replace(/"/g, '""')}"`,
+                `"${e.reason.replace(/"/g, '""')}"`,
+                e.startMileage,
+                e.endMileage,
+                e.distance,
+                e.fuel
+            ]);
+
+            const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Mileage_Log_${monthNames[currentMonth]}_${currentYear}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            showToast('CSV downloaded', 'success');
+        }
+
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        // Make deleteEntry available globally
+        window.deleteEntry = deleteEntry;
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
