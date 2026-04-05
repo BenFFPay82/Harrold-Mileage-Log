@@ -338,6 +338,113 @@
             color: #666;
         }
 
+        .receipt-upload {
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .receipt-upload.visible {
+            display: block;
+        }
+
+        .receipt-capture-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            background-color: #C8102E;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .receipt-capture-btn:hover {
+            background-color: #a00d25;
+        }
+
+        .receipt-capture-btn.has-receipt {
+            background-color: #22c55e;
+        }
+
+        .receipt-capture-btn.has-receipt:hover {
+            background-color: #16a34a;
+        }
+
+        .receipt-preview-small {
+            margin-top: 0.5rem;
+            max-width: 100%;
+            max-height: 120px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+
+        .receipt-icon {
+            cursor: pointer;
+            font-size: 1.125rem;
+            color: #C8102E;
+            background: none;
+            border: none;
+            padding: 0.25rem;
+        }
+
+        .receipt-icon:hover {
+            color: #a00d25;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 85vh;
+            border-radius: 8px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 36px;
+            height: 36px;
+            background: #C8102E;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.25rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
         @media (max-width: 600px) {
             .header h1 {
                 font-size: 1.25rem;
@@ -433,6 +540,11 @@
                                 <option value="No">No</option>
                                 <option value="Yes">Yes</option>
                             </select>
+                            <div class="receipt-upload" id="receiptUpload">
+                                <input type="file" id="receiptInput" accept="image/*" capture="environment" style="display:none">
+                                <button type="button" class="receipt-capture-btn" id="receiptBtn">&#128247; Capture / Upload Receipt</button>
+                                <img id="receiptPreview" class="receipt-preview-small" style="display:none">
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -504,12 +616,21 @@
         </section>
     </main>
 
+    <div class="modal-overlay" id="receiptModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">&times;</button>
+            <img id="modalImage" src="" alt="Receipt">
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         // State
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
+        let pendingReceiptData = null;
         const STORAGE_KEY = 'fireStationMileageLog';
 
         // DOM Elements
@@ -535,6 +656,13 @@
         const totalTripsEl = document.getElementById('totalTrips');
         const totalMilesEl = document.getElementById('totalMiles');
         const fuelStopsEl = document.getElementById('fuelStops');
+        const receiptUpload = document.getElementById('receiptUpload');
+        const receiptInput = document.getElementById('receiptInput');
+        const receiptBtn = document.getElementById('receiptBtn');
+        const receiptPreview = document.getElementById('receiptPreview');
+        const receiptModal = document.getElementById('receiptModal');
+        const modalClose = document.getElementById('modalClose');
+        const modalImage = document.getElementById('modalImage');
 
         // Initialize
         function init() {
@@ -591,6 +719,72 @@
             prevMonthBtn.addEventListener('click', () => changeMonth(-1));
             nextMonthBtn.addEventListener('click', () => changeMonth(1));
             exportBtn.addEventListener('click', exportToCSV);
+
+            // Receipt handling
+            fuelSelect.addEventListener('change', () => {
+                if (fuelSelect.value === 'Yes') {
+                    receiptUpload.classList.add('visible');
+                } else {
+                    receiptUpload.classList.remove('visible');
+                    clearReceipt();
+                }
+            });
+
+            receiptBtn.addEventListener('click', () => receiptInput.click());
+
+            receiptInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                resizeImage(file, 800, 0.7, (dataUrl) => {
+                    pendingReceiptData = dataUrl;
+                    receiptPreview.src = dataUrl;
+                    receiptPreview.style.display = 'block';
+                    receiptBtn.innerHTML = '&#9989; Receipt Captured';
+                    receiptBtn.classList.add('has-receipt');
+                });
+            });
+
+            receiptPreview.addEventListener('click', () => {
+                modalImage.src = receiptPreview.src;
+                receiptModal.classList.add('visible');
+            });
+
+            modalClose.addEventListener('click', () => receiptModal.classList.remove('visible'));
+            receiptModal.addEventListener('click', (e) => {
+                if (e.target === receiptModal) receiptModal.classList.remove('visible');
+            });
+        }
+
+        function resizeImage(file, maxWidth, quality, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = Math.round(height * maxWidth / width);
+                        width = maxWidth;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    callback(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearReceipt() {
+            pendingReceiptData = null;
+            receiptInput.value = '';
+            receiptPreview.src = '';
+            receiptPreview.style.display = 'none';
+            receiptBtn.innerHTML = '&#128247; Capture / Upload Receipt';
+            receiptBtn.classList.remove('has-receipt');
         }
 
         function calculateDistance() {
@@ -630,7 +824,8 @@
                 startMileage: start,
                 endMileage: end,
                 distance: end - start,
-                fuel: fuelSelect.value
+                fuel: fuelSelect.value,
+                receiptImage: pendingReceiptData || null
             };
 
             saveEntry(entry);
@@ -680,6 +875,9 @@
 
                 entries.forEach(entry => {
                     const row = document.createElement('tr');
+                    const fuelCell = entry.receiptImage
+                        ? `${entry.fuel} <button class="receipt-icon" onclick="viewReceipt(${entry.id})" title="View receipt">&#128206;</button>`
+                        : entry.fuel;
                     row.innerHTML = `
                         <td>${formatDate(entry.date)}</td>
                         <td>${escapeHtml(entry.vehicle || '')}</td>
@@ -689,7 +887,7 @@
                         <td>${entry.startMileage.toLocaleString()}</td>
                         <td>${entry.endMileage.toLocaleString()}</td>
                         <td>${entry.distance.toLocaleString()}</td>
-                        <td>${entry.fuel}</td>
+                        <td>${fuelCell}</td>
                         <td><button class="delete-btn" onclick="deleteEntry(${entry.id})" aria-label="Delete entry">&times;</button></td>
                     `;
                     entriesBody.appendChild(row);
@@ -728,6 +926,8 @@
             distanceValue.textContent = '0 miles';
             mileageError.classList.remove('visible');
             endMileageInput.setCustomValidity('');
+            receiptUpload.classList.remove('visible');
+            clearReceipt();
             setDefaultDate();
         }
 
@@ -764,6 +964,15 @@
             return div.innerHTML;
         }
 
+        function viewReceipt(entryId) {
+            const entries = getEntries();
+            const entry = entries.find(e => e.id === entryId);
+            if (entry && entry.receiptImage) {
+                modalImage.src = entry.receiptImage;
+                receiptModal.classList.add('visible');
+            }
+        }
+
         function exportToCSV() {
             const entries = getEntriesForMonth(currentMonth, currentYear);
 
@@ -775,28 +984,63 @@
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                 'July', 'August', 'September', 'October', 'November', 'December'];
 
-            const headers = ['Date', 'Vehicle', 'Name', 'Destination', 'Reason for Journey', 'Start Mileage', 'End Mileage', 'Distance', 'Fuel'];
-            const rows = entries.map(e => [
-                e.date,
-                e.vehicle || '',
-                `"${e.name.replace(/"/g, '""')}"`,
-                `"${e.destination.replace(/"/g, '""')}"`,
-                `"${e.reason.replace(/"/g, '""')}"`,
-                e.startMileage,
-                e.endMileage,
-                e.distance,
-                e.fuel
-            ]);
+            const hasReceipts = entries.some(e => e.receiptImage);
+
+            const headers = ['Date', 'Vehicle', 'Name', 'Destination', 'Reason for Journey', 'Start Mileage', 'End Mileage', 'Distance', 'Fuel', 'Receipt File'];
+            let receiptCount = 0;
+            const receiptFiles = [];
+
+            const rows = entries.map(e => {
+                let receiptFilename = '';
+                if (e.receiptImage) {
+                    receiptCount++;
+                    receiptFilename = `receipts/receipt_${e.date}_${e.vehicle || 'unknown'}_${receiptCount}.jpg`;
+                    receiptFiles.push({ filename: receiptFilename, data: e.receiptImage });
+                }
+                return [
+                    e.date,
+                    e.vehicle || '',
+                    `"${e.name.replace(/"/g, '""')}"`,
+                    `"${e.destination.replace(/"/g, '""')}"`,
+                    `"${e.reason.replace(/"/g, '""')}"`,
+                    e.startMileage,
+                    e.endMileage,
+                    e.distance,
+                    e.fuel,
+                    receiptFilename
+                ];
+            });
 
             const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `Mileage_Log_${monthNames[currentMonth]}_${currentYear}.csv`;
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const filePrefix = `Mileage_Log_${monthNames[currentMonth]}_${currentYear}`;
 
-            showToast('CSV downloaded', 'success');
+            if (hasReceipts && typeof JSZip !== 'undefined') {
+                const zip = new JSZip();
+                zip.file(`${filePrefix}.csv`, csvContent);
+
+                const receiptsFolder = zip.folder('receipts');
+                receiptFiles.forEach(rf => {
+                    const base64Data = rf.data.split(',')[1];
+                    receiptsFolder.file(rf.filename.replace('receipts/', ''), base64Data, { base64: true });
+                });
+
+                zip.generateAsync({ type: 'blob' }).then(blob => {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${filePrefix}.zip`;
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                    showToast('ZIP with receipts downloaded', 'success');
+                });
+            } else {
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${filePrefix}.csv`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                showToast('CSV downloaded', 'success');
+            }
         }
 
         function showToast(message, type = 'success') {
@@ -808,8 +1052,9 @@
             }, 3000);
         }
 
-        // Make deleteEntry available globally
+        // Make functions available globally
         window.deleteEntry = deleteEntry;
+        window.viewReceipt = viewReceipt;
 
         // Initialize on load
         init();
