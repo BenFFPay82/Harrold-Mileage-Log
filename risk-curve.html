@@ -131,7 +131,7 @@
       <div class="note" style="margin-top:.8rem">
         <b>Now loaded with real Bedfordshire data</b> — 1,624 dwelling fires (May 2021&ndash;May 2026). Likelihood is the
         <b>measured share</b> of fires reaching each outcome; appliance/firefighter demand and the IMD-2025 deprivation split
-        are built in. Every value stays editable so you can test sensitivity. People follows the agreed definitions;
+        are built in. Every value stays editable so you can test sensitivity. People follows the working (proposed) definitions;
         Place / Economy / Environment are proxied from damage area, and the 7-level definitions remain placeholders for the group.
       </div>
     </div>
@@ -283,7 +283,7 @@
     </div>
   </div>
 
-  <!-- COMPARISON: Ian vs new 5x5 vs new 7x7 -->
+  <!-- COMPARISON: equal-weight baseline vs new 5x5 vs new 7x7 -->
   <div class="card">
     <div class="card-header">Compare &amp; contrast — equal-weight baseline vs new 5 × 5 vs new 7 × 7</div>
     <div class="card-body" style="overflow:auto">
@@ -293,17 +293,17 @@
       <i>ACRL-style</i> baseline for contrast, <b>not</b> the full 2022 assessment (which ran three separate quantified
       assessments); plug in the actual ACRL values to reproduce it properly. The
       <b>new method</b> uses the consequence-biased matrix and the weighted average of the four lenses.
-      Watch the <b>ranks</b>: where Ian and the new method rank an outcome differently, that difference is driven by the
+      Watch the <b>ranks</b>: where the baseline and the new method rank an outcome differently, that difference is driven by the
       consequence-bias — the high-consequence/low-frequency outcomes climb. If 5×5 and 7×7 rank everything the same,
-      the format choice is largely cosmetic. This is the "compare and contrast" Jason asked for.</p>
+      the format choice is largely cosmetic. This is the requested compare-and-contrast.</p>
     </div>
   </div>
 
-  <!-- IAN METHOD EXPLAINER -->
+  <!-- 2022 ACRL METHOD EXPLAINER -->
   <div class="card">
-    <div class="card-header">How this differs from Ian's 2022 method (ACRL)</div>
+    <div class="card-header">How this differs from the 2022 method (ACRL)</div>
     <div class="card-body">
-      <p class="lead">Ian's <i>Assessment of Community Risk Level</i> ran <b>three</b> quantified assessments, each a simple
+      <p class="lead">The 2022 <i>Assessment of Community Risk Level</i> (ACRL) ran <b>three</b> quantified assessments, each a simple
       5×5 multiplication on a 1–5 scale (5 = highest frequency / most severe):</p>
       <ul class="lead" style="margin:.4rem 0 .6rem 1.2rem">
         <li><b>Life risk</b> = incident-frequency score × casualty-rate score</li>
@@ -311,22 +311,22 @@
         <li><b>Reasonable worst-case scenario</b> = likelihood × consequence (human welfare, FRS response, economic, environmental, community impact)</li>
       </ul>
       <p class="lead">Two things change in the new approach. First, multiplication weights likelihood and consequence
-      <b>equally</b>; the new matrix deliberately leans on consequence. Second — and the bigger shift — Ian scored each
+      <b>equally</b>; the new matrix deliberately leans on consequence. Second — and the bigger shift — the 2022 method scored each
       <b>incident type as a single point</b> using <i>average</i> casualty rates, so a dwelling fire became one dot. Tick
-      <b>"Show Ian's single-point method"</b> above to drop that dot onto the curve: it lands at high frequency / low
+      <b>"Show single-point (averaged) method"</b> above to drop that dot onto the curve: it lands at high frequency / low
       average consequence (green), because averaging buries the rare fatal fires. The curve keeps that fatal tail visible.
-      Ian's frequency was data-led from 5 years of IRS records — exactly the basis we'll use to derive the
-      proportion-of-dwelling-fires likelihood here.</p>
+      That frequency was data-led from 5 years of IRS records — the same basis used here for the
+      proportion-of-dwelling-fires likelihood.</p>
     </div>
   </div>
 
   <!-- DEFINITIONS -->
   <div class="card">
-    <div class="card-header">Impact definitions (from the agreed matrix)</div>
+    <div class="card-header">Impact definitions (from the draft matrix)</div>
     <div class="card-body" style="overflow:auto">
       <table id="defTable"></table>
       <p class="lead" style="margin-top:.5rem">Place and Economy levels are lifted directly from the draft matrix; Environment
-      matches Ian's earlier wording. <b>People has been adjusted</b> so that <b>level 1 = no injury</b> and <b>level 2 = any
+      matches the 2022 ACRL wording. <b>People has been adjusted</b> so that <b>level 1 = no injury</b> and <b>level 2 = any
       injury</b> (first aid or hospital) — in the agreed draft, level 1 read "first-aid case or no injury", which scored a
       harmed person the same as an unharmed one. This change needs the group's ratification.
       <b>Open question:</b> the 2022 ACRL and the 5 June minutes both treat <b>FRS response / resource impact</b> as
@@ -351,7 +351,7 @@
 const LENSES = ['people','place','environment','economy'];
 const LENS_LABEL = {people:'People (life)', place:'Place (property)', environment:'Environment', economy:'Economy', combined:'Combined (weighted)'};
 
-// Impact definitions on the 5-level scale (from the draft matrix / Ian's wording)
+// Impact definitions on the 5-level scale (from the draft matrix / 2022 ACRL wording)
 const DEF5 = {
   people:['No injury','Injury — first aid or hospital treatment','Life-threatening / serious injury','Loss of a life','Loss of multiple lives'],
   place:['Limited property damage','Fire limited to compartment of origin; single vehicle; no heritage impact',
@@ -367,7 +367,7 @@ const DEF5 = {
 // Likelihood = the share of all dwelling fires that reach this severity (proportionate, per the agreed basis)
 const LIKE5 = ['Tiny share of dwelling fires','Small share','Moderate share','Large share','Largest share of dwelling fires'];
 const LIKE7 = ['Smallest share','Very small share','Small share','Moderate share','Large share','Very large share','Largest share'];
-// Indicative frequency words -> relative weight, used for Ian's single (frequency-weighted) point
+// Indicative frequency words -> relative weight, used for the single averaged (frequency-weighted) point
 const FREQW = {'very high':100,'high':55,'moderate':22,'low':8,'rare':2,'very rare':1};
 
 // Dwelling-fire outcome spectrum (illustrative; levels on 1-5 base scale)
@@ -385,7 +385,7 @@ let SCENARIOS = [
 
 let N = 5;                       // matrix size
 let lens = 'combined';
-let showIan = false;             // overlay Ian's single-point method on the curve
+let showIan = false;             // overlay the single averaged-point method on the curve
 let combineMethod = 'avg';       // avg | impact | max  (how the four lenses become one score)
 let lifeFloor = true;            // life-risk floor: combined score & position never below the People lens
 let scope = 'All';               // IMD-2025 deprivation quintile in focus (rescales expected volumes)
@@ -530,7 +530,7 @@ function renderCurve(results){
     s+=`<circle class="pt" cx="${X}" cy="${Y}" r="11" fill="${BAND_COLOR[r.band]}" stroke="#fff" stroke-width="2" data-i="${results.indexOf(r)}" data-exc="${exc[i]<1?exc[i].toFixed(2):Math.round(exc[i])}"/>`;
     s+=`<text x="${X}" y="${Y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${num}</text>`;
   });
-  // Ian's single-point method: the whole incident type as ONE frequent point -> misses the descending tail
+  // Single averaged-point method: the whole incident type as ONE frequent point -> misses the descending tail
   if(showIan){
     let wsum=0,isum=0; results.forEach(r=>{ const fw=FREQW[r.s.freq]||1; wsum+=fw; isum+=fw*r.shownImpact; });
     const ianImpact=Math.max(1,Math.min(N, isum/wsum));
@@ -613,7 +613,7 @@ function renderCompare(){
       return v;
     }
     const c5=combNew(5,m5), c7=combNew(7,m7);
-    // Ian's method = simple multiplication, likelihood & consequence weighted EQUALLY, 5x5
+    // Equal-weight baseline = simple multiplication, likelihood & consequence weighted EQUALLY, 5x5
     const ian = toN(s.like,5) * combImp(5);
     return {n:s.n, c5, c7, ian, p5:c5/25, p7:c7/49, pi:ian/25};
   });
