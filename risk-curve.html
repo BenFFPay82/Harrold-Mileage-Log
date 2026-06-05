@@ -129,9 +129,10 @@
       We score consequence across <b>four lenses</b> — People, Place, Environment, Economy — using a matrix that
       deliberately <b>weights consequence above likelihood</b>, then combine them into a single comparable score.</p>
       <div class="note" style="margin-top:.8rem">
-        <b>This is a working model with illustrative data.</b> Every consequence and likelihood band below is editable —
-        plug in real CRA-database figures and the matrix, curve and combined scores all recalculate live. Likelihood
-        descriptors and the 7-level definitions are placeholders flagged for the group to agree.
+        <b>Now loaded with real Bedfordshire data</b> — 1,624 dwelling fires (May 2021&ndash;May 2026). Likelihood is the
+        <b>measured share</b> of fires reaching each outcome; appliance/firefighter demand and the IMD-2025 deprivation split
+        are built in. Every value stays editable so you can test sensitivity. People follows the agreed definitions;
+        Place / Economy / Environment are proxied from damage area, and the 7-level definitions remain placeholders for the group.
       </div>
     </div>
   </div>
@@ -145,6 +146,17 @@
           <div class="seg" id="sizeSeg">
             <button data-n="5" class="active">5 × 5</button>
             <button data-n="7">7 × 7</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <label>Area (IMD 2025 quintile)</label>
+          <div class="seg" id="qSeg">
+            <button data-q="All" class="active">All</button>
+            <button data-q="1">Q1</button>
+            <button data-q="2">Q2</button>
+            <button data-q="3">Q3</button>
+            <button data-q="4">Q4</button>
+            <button data-q="5">Q5</button>
           </div>
         </div>
         <div class="ctl">
@@ -197,7 +209,10 @@
       <p class="lead" style="margin-top:.7rem">Weights reflect <b>risk appetite</b> (e.g. "a life is worth twice a property").
       They are normalised automatically, so they need not sum to 100. Default leans toward People, per the minutes.
       The <b>life-risk floor</b> (on by default) stops a fatal outcome being averaged down by low Environment/Economy
-      scores &mdash; without it, &ldquo;multiple fatalities&rdquo; and &ldquo;out on arrival&rdquo; can tie. Turn it off to see that effect.</p>
+      scores &mdash; without it, &ldquo;multiple fatalities&rdquo; and &ldquo;out on arrival&rdquo; can tie. Turn it off to see that effect.
+      The <b>Area</b> selector refocuses the headline volumes and &ldquo;&asymp; fires/yr&rdquo; on an IMD-2025 deprivation quintile
+      (the fire rate is 2.5&times; higher in the most-deprived fifth); the severity mix is broadly constant, so it rescales
+      volume, not the curve&rsquo;s shape.</p>
     </div>
   </div>
 
@@ -256,12 +271,13 @@
 
   <!-- DATA TABLE -->
   <div class="card">
-    <div class="card-header"><span>Dwelling-fire outcomes — editable data</span><span class="pill">illustrative</span></div>
+    <div class="card-header"><span>Dwelling-fire outcomes — editable data</span><span class="pill">IRS · May 21–May 26</span></div>
     <div class="card-body" style="overflow:auto">
       <table id="dataTable"></table>
-      <p class="lead" style="margin-top:.5rem">Edit any dropdown to test sensitivity. Likelihood and the four lenses are
-      captured on a common 1–5 scale (matching the agreed impact definitions) and re-mapped automatically when you switch
-      to a 7×7 format, so the two formats stay directly comparable.</p>
+      <p class="lead" style="margin-top:.5rem">Share, appliances (Appl.) and firefighters (FF) are <b>measured from 1,624 incidents</b>;
+      &ldquo;&asymp; fires/yr&rdquo; rescales to the chosen IMD area. Resource is shown <b>separately</b>, not folded into the score.
+      Edit any dropdown to test sensitivity — likelihood and the four lenses sit on a common 1–5 scale and re-map automatically
+      to a 7×7 format, so the two formats stay comparable.</p>
     </div>
   </div>
 
@@ -320,7 +336,7 @@
       <span class="footer-name">Bedfordshire <span class="frs">Fire and Rescue Service</span></span>
     </div>
     <p class="footer-meta">Community Risk Analysis · risk-curve proof of concept. Built to visualise the concept — not a final methodology.<br>
-    Sources: draft Risk Matrix, S. risk-curve note, NFCC CRMP Risk Analysis guidance, CRA meeting 5 June 2026.</p>
+    Sources: IRS dwelling-fire extract (1,624 incidents, May 2021–May 2026); IMD 2025 (1,609 matched) &amp; ONS mid-2022 population; draft Risk Matrix; NFCC CRMP Risk Analysis guidance.</p>
   </footer>
 </div>
 
@@ -352,15 +368,15 @@ const FREQW = {'very high':100,'high':55,'moderate':22,'low':8,'rare':2,'very ra
 
 // Dwelling-fire outcome spectrum (illustrative; levels on 1-5 base scale)
 let SCENARIOS = [
-  {n:'Out on arrival / no fire damage',        like:5, people:1, place:1, environment:1, economy:1, freq:'very high'},
-  {n:'Small fire, contained to item, no injury',like:5, people:1, place:2, environment:1, economy:1, freq:'high'},
-  {n:'Fire to room of origin, minor/no injury', like:4, people:2, place:2, environment:1, economy:1, freq:'high'},
-  {n:'Property damage; casualty given first aid',like:4, people:1, place:3, environment:1, economy:2, freq:'moderate'},
-  {n:'Casualty needs hospital treatment',       like:3, people:2, place:3, environment:1, economy:2, freq:'moderate'},
-  {n:'Life-threatening injury / rescue',        like:2, people:3, place:3, environment:1, economy:2, freq:'low'},
-  {n:'Single fatality',                         like:2, people:4, place:3, environment:1, economy:2, freq:'low'},
-  {n:'Severe fire: fatality + major loss',      like:1, people:4, place:4, environment:2, economy:3, freq:'rare'},
-  {n:'Multiple fatalities / multi-dwelling',    like:1, people:5, place:5, environment:2, economy:3, freq:'very rare'}
+  {n:'Out on arrival / no fire damage',         like:5, people:1, place:1, environment:1, economy:1, freq:'high',      share:18.9, veh:1.9, ff:7.2},
+  {n:'Small fire, contained, no injury',        like:5, people:1, place:2, environment:1, economy:1, freq:'very high', share:59.2, veh:2.3, ff:8.5},
+  {n:'Fire to room of origin, no injury',       like:5, people:1, place:3, environment:1, economy:2, freq:'high',      share:16.0, veh:5.0, ff:14.8},
+  {n:'Property damage; first-aid casualty',     like:3, people:1, place:2, environment:1, economy:1, freq:'low',       share:0.9,  veh:2.8, ff:10.1},
+  {n:'Casualty needs hospital treatment',       like:4, people:2, place:2, environment:1, economy:2, freq:'moderate',  share:3.6,  veh:3.6, ff:11.7},
+  {n:'Life-threatening injury / rescue',        like:3, people:3, place:3, environment:1, economy:2, freq:'low',       share:0.8,  veh:4.3, ff:12.3},
+  {n:'Single fatality',                         like:2, people:4, place:2, environment:1, economy:2, freq:'rare',      share:0.2,  veh:8.0, ff:17.0},
+  {n:'Severe fire: fatality + major loss',      like:3, people:4, place:5, environment:2, economy:3, freq:'rare',      share:0.3,  veh:17.6, ff:43.2},
+  {n:'Multiple fatalities / multi-dwelling',    like:1, people:5, place:5, environment:2, economy:3, freq:'very rare', share:0.06, veh:19.0, ff:59.0}
 ];
 
 let N = 5;                       // matrix size
@@ -368,6 +384,12 @@ let lens = 'combined';
 let showIan = false;             // overlay Ian's single-point method on the curve
 let combineMethod = 'avg';       // avg | impact | max  (how the four lenses become one score)
 let lifeFloor = true;            // life-risk floor: combined score & position never below the People lens
+let scope = 'All';               // IMD-2025 deprivation quintile in focus (rescales expected volumes)
+const QDATA = {
+  'All':{fires:322, rate:0.47, label:'All areas'},
+  '1':{fires:94, rate:0.78, label:'Q1 most deprived'}, '2':{fires:77, rate:0.53, label:'Q2'},
+  '3':{fires:64, rate:0.46, label:'Q3'}, '4':{fires:54, rate:0.32, label:'Q4'}, '5':{fires:33, rate:0.31, label:'Q5 least deprived'}
+};
 let weights = {people:40, place:25, environment:15, economy:20};
 const THRESH = {tol:0.34, unacc:0.67}; // band thresholds as fraction of max score
 
@@ -543,6 +565,7 @@ function renderKPIs(results){
   const tailShare = Math.round(tail.length/results.length*100);
   const area = results.reduce((a,r)=>a+r.shownScore,0); // crude integral / profile size
   document.getElementById('kpis').innerHTML=`
+    <div class="box"><b>${QDATA[scope].fires}</b><small>dwelling fires / yr (${QDATA[scope].label})</small></div>
     <div class="box"><b>${results.length}</b><small>outcomes on the dwelling-fire curve</small></div>
     <div class="box"><b>${top.combScore}</b><small>peak combined score — "${top.s.n}"</small></div>
     <div class="box"><b>${tailShare}%</b><small>of outcomes sit in the high-consequence tail</small></div>
@@ -553,15 +576,18 @@ function renderKPIs(results){
 
 function renderDataTable(results){
   const t=document.getElementById('dataTable');
-  let h='<thead><tr><th class="name">#  Dwelling-fire outcome</th><th>Likelihood</th>'
+  let h='<thead><tr><th class="name">#  Dwelling-fire outcome</th><th>Share</th><th>&asymp; fires/yr</th><th>Likelihood</th>'
        +'<th>People</th><th>Place</th><th>Env</th><th>Economy</th>'
-       +'<th>'+LENS_LABEL[lens]+' score</th><th>Band</th></tr></thead><tbody>';
+       +'<th>'+LENS_LABEL[lens]+' score</th><th title="mean appliances - resource demand, shown separately from the harm score">Appl.</th><th title="mean firefighters">FF</th></tr></thead><tbody>';
   results.forEach((r,idx)=>{
+    const ann=(r.s.share/100)*QDATA[scope].fires;
     h+='<tr><td class="name">'+(idx+1)+'. '+r.s.n+'</td>';
+    h+='<td>'+r.s.share+'%</td>';
+    h+='<td>'+(ann<1?ann.toFixed(2):Math.round(ann))+'</td>';
     h+='<td>'+sel('like',idx,r.s.like)+'</td>';
     LENSES.forEach(L=> h+='<td>'+sel(L,idx,r.s[L])+'</td>');
     h+='<td class="scorebadge" style="color:'+BAND_COLOR[r.band]+'">'+r.shownScore+' / '+r.max+'</td>';
-    h+='<td><span class="sw" style="background:'+BAND_COLOR[r.band]+'"></span></td></tr>';
+    h+='<td>'+r.s.veh+'</td><td>'+r.s.ff+'</td></tr>';
   });
   h+='</tbody>';
   t.innerHTML=h;
@@ -644,6 +670,12 @@ function refresh(){
 document.getElementById('sizeSeg').addEventListener('click',e=>{
   if(e.target.tagName!=='BUTTON') return;
   N=+e.target.dataset.n;
+  [...e.currentTarget.children].forEach(b=>b.classList.toggle('active', b===e.target));
+  refresh();
+});
+document.getElementById('qSeg').addEventListener('click',e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  scope=e.target.dataset.q;
   [...e.currentTarget.children].forEach(b=>b.classList.toggle('active', b===e.target));
   refresh();
 });
