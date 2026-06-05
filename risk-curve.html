@@ -124,6 +124,14 @@
           </select>
         </div>
         <div class="ctl">
+          <label>Combine method</label>
+          <select id="combineSel">
+            <option value="avg">Weighted avg of lens scores</option>
+            <option value="impact">Weighted impact, then lookup</option>
+            <option value="max">Worst lens (max)</option>
+          </select>
+        </div>
+        <div class="ctl">
           <label>People weight <span id="wPeopleV" class="pill">40%</span></label>
           <div class="slider-row"><input type="range" id="wPeople" min="0" max="100" value="40"></div>
         </div>
@@ -138,6 +146,12 @@
         <div class="ctl">
           <label>Economy weight <span id="wEcoV" class="pill">20%</span></label>
           <div class="slider-row"><input type="range" id="wEco" min="0" max="100" value="20"></div>
+        </div>
+        <div class="ctl">
+          <label>Overlay</label>
+          <label style="text-transform:none;font-weight:500;color:var(--ink);font-size:.85rem">
+            <input type="checkbox" id="ianToggle"> Show Ian's single-point method
+          </label>
         </div>
       </div>
       <p class="lead" style="margin-top:.7rem">Weights reflect <b>risk appetite</b> (e.g. "a life is worth twice a property").
@@ -204,14 +218,38 @@
     </div>
   </div>
 
-  <!-- 5x5 vs 7x7 COMPARISON -->
+  <!-- COMPARISON: Ian vs new 5x5 vs new 7x7 -->
   <div class="card">
-    <div class="card-header">5 × 5 vs 7 × 7 — does the format change the story?</div>
+    <div class="card-header">Compare &amp; contrast — Ian's method vs new 5 × 5 vs new 7 × 7</div>
     <div class="card-body" style="overflow:auto">
       <table class="cmp" id="cmpTable"></table>
-      <p class="lead" style="margin-top:.5rem">Scores are shown as a % of each format's maximum so the two scales line up.
-      If the <b>ranking</b> of outcomes is the same in both, the choice of format is largely cosmetic; where they diverge,
-      that is the evidence the group needs to choose. This is the "compare and contrast" Jason asked for.</p>
+      <p class="lead" style="margin-top:.5rem">Scores shown as a % of each method's maximum so the scales line up.
+      <b>Ian's method</b> multiplies likelihood × consequence with the two weighted <i>equally</i>; the
+      <b>new method</b> uses the consequence-biased matrix and the weighted average of the four lenses.
+      Watch the <b>ranks</b>: where Ian and the new method rank an outcome differently, that difference is driven by the
+      consequence-bias — the high-consequence/low-frequency outcomes climb. If 5×5 and 7×7 rank everything the same,
+      the format choice is largely cosmetic. This is the "compare and contrast" Jason asked for.</p>
+    </div>
+  </div>
+
+  <!-- IAN METHOD EXPLAINER -->
+  <div class="card">
+    <div class="card-header">How this differs from Ian's 2022 method (ACRL)</div>
+    <div class="card-body">
+      <p class="lead">Ian's <i>Assessment of Community Risk Level</i> ran <b>three</b> quantified assessments, each a simple
+      5×5 multiplication on a 1–5 scale (5 = highest frequency / most severe):</p>
+      <ul class="lead" style="margin:.4rem 0 .6rem 1.2rem">
+        <li><b>Life risk</b> = incident-frequency score × casualty-rate score</li>
+        <li><b>Resource / normal-demand risk</b> = incident-frequency score × FRS-resources score</li>
+        <li><b>Reasonable worst-case scenario</b> = likelihood × consequence (human welfare, FRS response, economic, environmental, community impact)</li>
+      </ul>
+      <p class="lead">Two things change in the new approach. First, multiplication weights likelihood and consequence
+      <b>equally</b>; the new matrix deliberately leans on consequence. Second — and the bigger shift — Ian scored each
+      <b>incident type as a single point</b> using <i>average</i> casualty rates, so a dwelling fire became one dot. Tick
+      <b>"Show Ian's single-point method"</b> above to drop that dot onto the curve: it lands at high frequency / low
+      average consequence (green), because averaging buries the rare fatal fires. The curve keeps that fatal tail visible.
+      Ian's frequency was data-led from 5 years of IRS records — exactly the basis we'll use to derive the
+      proportion-of-dwelling-fires likelihood here.</p>
     </div>
   </div>
 
@@ -251,8 +289,11 @@ const DEF5 = {
                'Significant damage that cannot be recovered within 5 years even with intervention'],
   economy:['< £100k','Hundreds of thousands £','Millions £','Tens of millions £','Hundreds of millions £']
 };
-const LIKE5 = ['Rarer than once a year','Attended ~annually','Attended ~monthly','Attended ~weekly','Attended ~daily (on average)'];
-const LIKE7 = ['< once a year','~annually','Several times a year','~monthly','~weekly','Several times a week','~daily (on average)'];
+// Likelihood = the share of all dwelling fires that reach this severity (proportionate, per the agreed basis)
+const LIKE5 = ['Tiny share of dwelling fires','Small share','Moderate share','Large share','Largest share of dwelling fires'];
+const LIKE7 = ['Smallest share','Very small share','Small share','Moderate share','Large share','Very large share','Largest share'];
+// Indicative frequency words -> relative weight, used for Ian's single (frequency-weighted) point
+const FREQW = {'very high':100,'high':55,'moderate':22,'low':8,'rare':2,'very rare':1};
 
 // Dwelling-fire outcome spectrum (illustrative; levels on 1-5 base scale)
 let SCENARIOS = [
@@ -269,6 +310,8 @@ let SCENARIOS = [
 
 let N = 5;                       // matrix size
 let lens = 'combined';
+let showIan = false;             // overlay Ian's single-point method on the curve
+let combineMethod = 'avg';       // avg | impact | max  (how the four lenses become one score)
 let weights = {people:40, place:25, environment:15, economy:20};
 const THRESH = {tol:0.34, unacc:0.67}; // band thresholds as fraction of max score
 
@@ -313,9 +356,13 @@ function compute(){
     const lk=toN(s.like,N);
     const lensScore={}, lensImpactN={};
     LENSES.forEach(L=>{ const imp=toN(s[L],N); lensImpactN[L]=imp; lensScore[L]=mat[imp-1][lk-1]; });
-    // combined impact level (weighted) then look up; also weighted score
+    // combImpactN (weighted impact level) positions the point on the curve's x-axis.
     const combImpactN = Math.min(N,Math.max(1,Math.round(LENSES.reduce((a,L)=>a+lensImpactN[L]*w[L],0))));
-    const combScore = mat[combImpactN-1][lk-1];
+    // Combined score depends on the selected combine method.
+    let combScore;
+    if(combineMethod==='impact')   combScore = mat[combImpactN-1][lk-1];                                   // blend impact, then one lookup
+    else if(combineMethod==='max') combScore = Math.max(...LENSES.map(L=>lensScore[L]));                   // worst lens dominates
+    else                           combScore = Math.round(LENSES.reduce((a,L)=>a+lensScore[L]*w[L],0));    // weighted avg (default)
     const shownImpact = lens==='combined'? combImpactN : lensImpactN[lens];
     const shownScore  = lens==='combined'? combScore   : lensScore[lens];
     return {s, lk, lensScore, lensImpactN, combImpactN, combScore, shownImpact, shownScore,
@@ -404,6 +451,17 @@ function renderCurve(results){
          data-i="${results.indexOf(r)}"/>`;
     s+=`<text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${results.indexOf(r)+1}</text>`;
   });
+  // Ian's single-point method overlay: one frequency-weighted point for the whole incident type
+  if(showIan){
+    let wsum=0, isum=0;
+    results.forEach(r=>{ const fw=FREQW[r.s.freq]||1; wsum+=fw; isum+=fw*r.combImpactN; });
+    const ianImpact=Math.max(1,Math.min(N, isum/wsum));   // averaged consequence -> hides the severe tail
+    const ix=sx(ianImpact), iy=sy(N);                     // dwelling fires overall are frequent -> top of scale
+    const d=10;
+    s+=`<path class="ian" d="M ${ix} ${iy-d} L ${ix+d} ${iy} L ${ix} ${iy+d} L ${ix-d} ${iy} Z" fill="#3949ab" stroke="#fff" stroke-width="2"/>`;
+    s+=`<text x="${ix}" y="${iy-d-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#3949ab">Ian: single point</text>`;
+    s+=`<text x="${ix}" y="${iy-d-19}" text-anchor="middle" font-size="9" fill="#5c6bc0">(averages out the fatal tail)</text>`;
+  }
   const svg=document.getElementById('curve'); svg.innerHTML=s;
   svg.querySelectorAll('.pt').forEach(c=>{
     c.style.cursor='pointer';
@@ -462,30 +520,35 @@ function renderCompare(){
   const t=document.getElementById('cmpTable');
   const m5=buildMatrix(5), m7=buildMatrix(7), w=normWeights();
   const rows=SCENARIOS.map(s=>{
-    function comb(n,mat){
+    function combImp(n){ return Math.min(n,Math.max(1,Math.round(LENSES.reduce((a,L)=>a+toN(s[L],n)*w[L],0)))); }
+    // New method = consequence-biased matrix combined per the selected combine method
+    function combNew(n,mat){
       const lk=toN(s.like,n);
-      const ci=Math.min(n,Math.max(1,Math.round(LENSES.reduce((a,L)=>a+toN(s[L],n)*w[L],0))));
-      return mat[ci-1][lk-1];
+      if(combineMethod==='impact') return mat[combImp(n)-1][lk-1];
+      if(combineMethod==='max')    return Math.max(...LENSES.map(L=>mat[toN(s[L],n)-1][lk-1]));
+      return Math.round(LENSES.reduce((a,L)=>a+mat[toN(s[L],n)-1][lk-1]*w[L],0));
     }
-    const c5=comb(5,m5), c7=comb(7,m7);
-    return {n:s.n, p5:c5/25, p7:c7/49, c5, c7};
+    const c5=combNew(5,m5), c7=combNew(7,m7);
+    // Ian's method = simple multiplication, likelihood & consequence weighted EQUALLY, 5x5
+    const ian = toN(s.like,5) * combImp(5);
+    return {n:s.n, c5, c7, ian, p5:c5/25, p7:c7/49, pi:ian/25};
   });
-  // rank in each
-  const r5=[...rows].sort((a,b)=>b.c5-a.c5), r7=[...rows].sort((a,b)=>b.c7-a.c7);
-  rows.forEach(r=>{ r.rank5=r5.indexOf(r)+1; r.rank7=r7.indexOf(r)+1; });
-  let h='<thead><tr><th class="name">Outcome</th><th>5×5 score</th><th>5×5 rank</th>'
-       +'<th>7×7 score</th><th>7×7 rank</th><th class="bar-cell">5×5 vs 7×7 (% of max)</th><th>Rank shift</th></tr></thead><tbody>';
+  const r5=[...rows].sort((a,b)=>b.c5-a.c5), r7=[...rows].sort((a,b)=>b.c7-a.c7), ri=[...rows].sort((a,b)=>b.ian-a.ian);
+  rows.forEach(r=>{ r.rank5=r5.indexOf(r)+1; r.rank7=r7.indexOf(r)+1; r.ranki=ri.indexOf(r)+1; });
+  let h='<thead><tr><th class="name">Outcome</th>'
+       +'<th>Ian (× equal)</th><th>rank</th>'
+       +'<th>New 5×5</th><th>rank</th>'
+       +'<th>New 7×7</th><th>rank</th>'
+       +'<th class="bar-cell">Ian · 5×5 · 7×7 (% of max)</th></tr></thead><tbody>';
   rows.forEach(r=>{
-    const shift=r.rank5-r.rank7;
-    const shiftTxt= shift===0?'—':(shift>0?'▲ '+shift:'▼ '+Math.abs(shift));
-    const shiftCol= shift===0?'#999':(shift>0?'var(--green)':'var(--red)');
     h+='<tr><td class="name">'+r.n+'</td>'
+      +'<td>'+r.ian+'/25</td><td>'+r.ranki+'</td>'
       +'<td>'+r.c5+'/25</td><td>'+r.rank5+'</td>'
       +'<td>'+r.c7+'/49</td><td>'+r.rank7+'</td>'
-      +'<td class="bar-cell">'
-        +'<span class="bar" style="width:'+(r.p5*120)+'px;opacity:.55"></span> '
-        +'<span class="bar" style="width:'+(r.p7*120)+'px"></span></td>'
-      +'<td style="color:'+shiftCol+';font-weight:700">'+shiftTxt+'</td></tr>';
+      +'<td class="bar-cell" style="white-space:nowrap">'
+        +'<span class="bar" style="width:'+(r.pi*90)+'px;background:#3949ab"></span> '
+        +'<span class="bar" style="width:'+(r.p5*90)+'px;opacity:.55"></span> '
+        +'<span class="bar" style="width:'+(r.p7*90)+'px"></span></td></tr>';
   });
   h+='</tbody>';
   t.innerHTML=h;
@@ -522,6 +585,8 @@ document.getElementById('sizeSeg').addEventListener('click',e=>{
   refresh();
 });
 document.getElementById('lensSel').addEventListener('change',e=>{ lens=e.target.value; refresh(); });
+document.getElementById('ianToggle').addEventListener('change',e=>{ showIan=e.target.checked; refresh(); });
+document.getElementById('combineSel').addEventListener('change',e=>{ combineMethod=e.target.value; refresh(); });
 function wireW(id,key,vid){
   document.getElementById(id).addEventListener('input',e=>{
     weights[key]=+e.target.value; document.getElementById(vid).textContent=e.target.value+'%'; refresh();
