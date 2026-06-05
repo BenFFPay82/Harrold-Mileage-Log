@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRA Risk Curve — Dwelling Fires (Proof of Concept)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --bfrs:#C8102E; --bfrs-dark:#9c0c24; --ink:#222; --muted:#666;
+    --line:#e2e2e2; --bg:#f5f5f5; --card:#fff;
+    --green:#2e7d32; --amber:#f9a825; --red:#c62828;
+  }
+  body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;
+        background:var(--bg); color:var(--ink); line-height:1.55; }
+  .header{ background:var(--bfrs); color:#fff; padding:1rem 1.25rem; display:flex;
+           align-items:center; justify-content:space-between; box-shadow:0 2px 4px rgba(0,0,0,.12); }
+  .header h1{ font-size:1.35rem; font-weight:600; }
+  .header p{ font-size:.85rem; opacity:.92; }
+  .header-logo{ height:54px; background:#fff; padding:5px 9px; border-radius:6px; }
+  .container{ max-width:1280px; margin:0 auto; padding:1rem; }
+  .card{ background:var(--card); border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.08);
+         margin-bottom:1rem; overflow:hidden; }
+  .card-header{ background:var(--bfrs); color:#fff; padding:.7rem 1rem; font-weight:600; font-size:1rem;
+                display:flex; justify-content:space-between; align-items:center; }
+  .card-body{ padding:1rem 1.1rem; }
+  .lead{ color:var(--muted); font-size:.92rem; }
+  .grid2{ display:grid; grid-template-columns:1fr; gap:1rem; }
+  @media(min-width:1000px){ .grid2{ grid-template-columns:1.05fr .95fr; } }
+  .controls{ display:flex; flex-wrap:wrap; gap:1.25rem; align-items:flex-end; }
+  .ctl{ display:flex; flex-direction:column; gap:.3rem; }
+  .ctl label{ font-size:.78rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  select, .seg button{ font-size:.95rem; }
+  select{ padding:.45rem .55rem; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .seg{ display:inline-flex; border:1px solid var(--bfrs); border-radius:6px; overflow:hidden; }
+  .seg button{ border:0; background:#fff; color:var(--bfrs); padding:.45rem .8rem; cursor:pointer; font-weight:600; }
+  .seg button.active{ background:var(--bfrs); color:#fff; }
+  .slider-row{ display:flex; align-items:center; gap:.5rem; }
+  input[type=range]{ width:150px; accent-color:var(--bfrs); }
+  .pill{ display:inline-block; font-size:.72rem; padding:.12rem .5rem; border-radius:999px;
+         background:#fde8eb; color:var(--bfrs-dark); font-weight:600; }
+  .note{ background:#fff8e1; border-left:4px solid var(--amber); padding:.7rem .9rem; border-radius:0 6px 6px 0;
+         font-size:.86rem; color:#5d4d12; }
+  table{ width:100%; border-collapse:collapse; font-size:.85rem; }
+  th,td{ padding:.45rem .5rem; border-bottom:1px solid var(--line); text-align:center; }
+  th{ background:#fafafa; font-weight:600; color:var(--muted); position:sticky; top:0; }
+  td.name, th.name{ text-align:left; }
+  td select{ padding:.2rem; font-size:.82rem; }
+  .matrix{ border-collapse:collapse; margin:auto; }
+  .matrix td,.matrix th{ border:1px solid #fff; width:64px; height:48px; text-align:center; font-weight:600;
+         font-size:.9rem; color:#fff; position:relative; }
+  .matrix .axis{ background:#fff; color:var(--muted); font-weight:600; font-size:.74rem; border:0; }
+  .matrix .corner{ background:#fff; border:0; }
+  .matrix .dot{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .marker{ width:20px; height:20px; border-radius:50%; background:#fff; color:#111; font-size:.72rem;
+           display:flex; align-items:center; justify-content:center; font-weight:700; border:2px solid #111;
+           box-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .legend{ display:flex; gap:1rem; flex-wrap:wrap; font-size:.8rem; color:var(--muted); margin-top:.6rem; }
+  .legend span{ display:inline-flex; align-items:center; gap:.35rem; }
+  .sw{ width:14px; height:14px; border-radius:3px; display:inline-block; }
+  .axis-title{ font-size:.8rem; color:var(--muted); text-align:center; font-weight:600; }
+  .rot{ writing-mode:vertical-rl; transform:rotate(180deg); }
+  .cmp td.bar-cell{ text-align:left; }
+  .bar{ height:14px; border-radius:3px; background:var(--bfrs); display:inline-block; vertical-align:middle; }
+  .scorebadge{ font-weight:700; }
+  details summary{ cursor:pointer; font-weight:600; color:var(--bfrs); }
+  .kpi{ display:flex; gap:1rem; flex-wrap:wrap; }
+  .kpi .box{ flex:1; min-width:120px; background:#fafafa; border:1px solid var(--line); border-radius:8px; padding:.7rem; text-align:center; }
+  .kpi .box b{ display:block; font-size:1.5rem; color:var(--bfrs); }
+  .kpi .box small{ color:var(--muted); }
+  svg text{ font-family:inherit; }
+  .tooltip{ position:fixed; pointer-events:none; background:#222; color:#fff; padding:.5rem .65rem; border-radius:6px;
+            font-size:.78rem; max-width:240px; opacity:0; transition:opacity .12s; z-index:50; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+  footer{ text-align:center; color:var(--muted); font-size:.78rem; padding:1.5rem 1rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Community Risk Analysis — Risk Curve Visualiser</h1>
+    <p>Proof of concept · Dwelling Fires · informing the next CRMP</p>
+  </div>
+  <img class="header-logo" src="BFRScrest.webp" alt="Bedfordshire Fire &amp; Rescue Service" onerror="this.style.display='none'">
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">The idea in one screen</div>
+    <div class="card-body">
+      <p class="lead">A dwelling fire is not a single risk. It is a <b>spectrum of outcomes</b> — from a pan fire that's
+      out on arrival, to a fully developed fire that kills two people. Each outcome has its own
+      <b>likelihood</b> and its own <b>consequence</b>. Plotting them together draws a <b>risk curve</b>:
+      many low-consequence / high-frequency events at one end, rare high-consequence events at the other.
+      We score consequence across <b>four lenses</b> — People, Place, Environment, Economy — using a matrix that
+      deliberately <b>weights consequence above likelihood</b>, then combine them into a single comparable score.</p>
+      <div class="note" style="margin-top:.8rem">
+        <b>This is a working model with illustrative data.</b> Every consequence and likelihood band below is editable —
+        plug in real CRA-database figures and the matrix, curve and combined scores all recalculate live. Likelihood
+        descriptors and the 7-level definitions are placeholders flagged for the group to agree.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Controls</div>
+    <div class="card-body">
+      <div class="controls">
+        <div class="ctl">
+          <label>Matrix format</label>
+          <div class="seg" id="sizeSeg">
+            <button data-n="5" class="active">5 × 5</button>
+            <button data-n="7">7 × 7</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <label>Lens shown</label>
+          <select id="lensSel">
+            <option value="combined">Combined (weighted)</option>
+            <option value="people">People (life)</option>
+            <option value="place">Place (property)</option>
+            <option value="environment">Environment</option>
+            <option value="economy">Economy</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <label>People weight <span id="wPeopleV" class="pill">40%</span></label>
+          <div class="slider-row"><input type="range" id="wPeople" min="0" max="100" value="40"></div>
+        </div>
+        <div class="ctl">
+          <label>Place weight <span id="wPlaceV" class="pill">25%</span></label>
+          <div class="slider-row"><input type="range" id="wPlace" min="0" max="100" value="25"></div>
+        </div>
+        <div class="ctl">
+          <label>Environment weight <span id="wEnvV" class="pill">15%</span></label>
+          <div class="slider-row"><input type="range" id="wEnv" min="0" max="100" value="15"></div>
+        </div>
+        <div class="ctl">
+          <label>Economy weight <span id="wEcoV" class="pill">20%</span></label>
+          <div class="slider-row"><input type="range" id="wEco" min="0" max="100" value="20"></div>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:.7rem">Weights reflect <b>risk appetite</b> (e.g. "a life is worth twice a property").
+      They are normalised automatically, so they need not sum to 100. Default leans toward People, per the minutes.</p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- MATRIX -->
+    <div class="card">
+      <div class="card-header"><span>Weighted risk matrix</span><span class="pill" id="matrixTag">5 × 5 · impact-biased</span></div>
+      <div class="card-body">
+        <div style="display:flex; gap:.4rem; align-items:stretch;">
+          <div class="axis-title rot" style="align-self:center">Likelihood / frequency →</div>
+          <div style="flex:1; overflow:auto;">
+            <table class="matrix" id="matrixTable"></table>
+            <div class="axis-title" style="margin-top:.4rem">Consequence / impact →</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--green)"></span> Tolerable</span>
+          <span><span class="sw" style="background:var(--amber)"></span> Tolerable with mitigation</span>
+          <span><span class="sw" style="background:var(--red)"></span> Unacceptable</span>
+          <span>● numbered markers = dwelling-fire outcomes (see table)</span>
+        </div>
+        <details style="margin-top:.7rem">
+          <summary>Why this matrix leans on consequence</summary>
+          <p class="lead" style="margin-top:.4rem">Cells are numbered along diagonals (the IRM method) so every cell has a
+          <b>unique</b> score and no two outcomes tie. Crucially, within each diagonal the higher-consequence cell takes the
+          higher number — so a <b>rare-but-catastrophic</b> event (low likelihood × high impact) outscores a
+          <b>frequent-but-trivial</b> one (high likelihood × low impact). That is the behaviour we want for life risk.</p>
+        </details>
+      </div>
+    </div>
+
+    <!-- CURVE -->
+    <div class="card">
+      <div class="card-header"><span>Risk curve</span><span class="pill" id="curveTag">Combined</span></div>
+      <div class="card-body">
+        <svg id="curve" viewBox="0 0 520 380" width="100%" style="max-height:420px"></svg>
+        <p class="lead">Each point is a dwelling-fire outcome. The curve runs from <b>high-frequency / low-consequence</b>
+        (top-left) down to <b>low-frequency / high-consequence</b> (bottom-right). Bubble colour = matrix risk band;
+        the shaded area is the risk-profile envelope. Hover a point for detail.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="card">
+    <div class="card-header">Headline for this configuration</div>
+    <div class="card-body">
+      <div class="kpi" id="kpis"></div>
+    </div>
+  </div>
+
+  <!-- DATA TABLE -->
+  <div class="card">
+    <div class="card-header"><span>Dwelling-fire outcomes — editable data</span><span class="pill">illustrative</span></div>
+    <div class="card-body" style="overflow:auto">
+      <table id="dataTable"></table>
+      <p class="lead" style="margin-top:.5rem">Edit any dropdown to test sensitivity. Likelihood and the four lenses are
+      captured on a common 1–5 scale (matching the agreed impact definitions) and re-mapped automatically when you switch
+      to a 7×7 format, so the two formats stay directly comparable.</p>
+    </div>
+  </div>
+
+  <!-- 5x5 vs 7x7 COMPARISON -->
+  <div class="card">
+    <div class="card-header">5 × 5 vs 7 × 7 — does the format change the story?</div>
+    <div class="card-body" style="overflow:auto">
+      <table class="cmp" id="cmpTable"></table>
+      <p class="lead" style="margin-top:.5rem">Scores are shown as a % of each format's maximum so the two scales line up.
+      If the <b>ranking</b> of outcomes is the same in both, the choice of format is largely cosmetic; where they diverge,
+      that is the evidence the group needs to choose. This is the "compare and contrast" Jason asked for.</p>
+    </div>
+  </div>
+
+  <!-- DEFINITIONS -->
+  <div class="card">
+    <div class="card-header">Impact definitions (from the agreed matrix)</div>
+    <div class="card-body" style="overflow:auto">
+      <table id="defTable"></table>
+      <p class="lead" style="margin-top:.5rem">People, Place and Economy levels are lifted directly from the draft matrix.
+      Environment matches Ian's earlier wording. 7-level rows are interpolated placeholders for discussion.</p>
+    </div>
+  </div>
+
+  <footer>
+    Bedfordshire Fire &amp; Rescue Service · Community Risk Analysis · risk-curve proof of concept.
+    Built to visualise the concept — not a final methodology. Sources: draft Risk Matrix, S. risk-curve note, NFCC CRMP Risk Analysis guidance, CRA meeting 5 Jun.
+  </footer>
+</div>
+
+<div class="tooltip" id="tip"></div>
+
+<script>
+/* ---------- Configuration & data ---------- */
+const LENSES = ['people','place','environment','economy'];
+const LENS_LABEL = {people:'People (life)', place:'Place (property)', environment:'Environment', economy:'Economy', combined:'Combined (weighted)'};
+
+// Impact definitions on the 5-level scale (from the draft matrix / Ian's wording)
+const DEF5 = {
+  people:['First aid case or no injury','Medical treatment','Life-threatening injury','Loss of a life','Loss of multiple lives'],
+  place:['Limited property damage','Fire limited to compartment of origin; single vehicle; no heritage impact',
+         'Fire & smoke damage to entire property; replacement cost ~£100k','Heritage loss / several properties or a significant employer; damage >£100k',
+         'Loss of several homes (10+) / heritage loss; property or vehicles >£1m'],
+  environment:['Damage to rivers/air/land, recoverable in a short period without intervention',
+               'Damage recoverable within a year (or less) with intervention',
+               'Significant damage recoverable within a year (or less) with intervention',
+               'Significant damage recoverable but takes longer than a year with intervention',
+               'Significant damage that cannot be recovered within 5 years even with intervention'],
+  economy:['< £100k','Hundreds of thousands £','Millions £','Tens of millions £','Hundreds of millions £']
+};
+const LIKE5 = ['Rarer than once a year','Attended ~annually','Attended ~monthly','Attended ~weekly','Attended ~daily (on average)'];
+const LIKE7 = ['< once a year','~annually','Several times a year','~monthly','~weekly','Several times a week','~daily (on average)'];
+
+// Dwelling-fire outcome spectrum (illustrative; levels on 1-5 base scale)
+let SCENARIOS = [
+  {n:'Out on arrival / no fire damage',        like:5, people:1, place:1, environment:1, economy:1, freq:'very high'},
+  {n:'Small fire, contained to item, no injury',like:5, people:1, place:2, environment:1, economy:1, freq:'high'},
+  {n:'Fire to room of origin, minor/no injury', like:4, people:2, place:2, environment:1, economy:1, freq:'high'},
+  {n:'Property damage; casualty given first aid',like:4, people:2, place:3, environment:1, economy:2, freq:'moderate'},
+  {n:'Casualty needs hospital treatment',       like:3, people:3, place:3, environment:1, economy:2, freq:'moderate'},
+  {n:'Life-threatening injury / rescue',        like:2, people:4, place:3, environment:1, economy:2, freq:'low'},
+  {n:'Single fatality',                         like:2, people:4, place:3, environment:1, economy:2, freq:'low'},
+  {n:'Severe fire: fatality + major loss',      like:1, people:4, place:4, environment:2, economy:3, freq:'rare'},
+  {n:'Multiple fatalities / multi-dwelling',    like:1, people:5, place:5, environment:2, economy:3, freq:'very rare'}
+];
+
+let N = 5;                       // matrix size
+let lens = 'combined';
+let weights = {people:40, place:25, environment:15, economy:20};
+const THRESH = {tol:0.34, unacc:0.67}; // band thresholds as fraction of max score
+
+/* ---------- Matrix maths ---------- */
+// Build NxN matrix with diagonal (IRM) fill, impact-biased: higher impact => higher score within a diagonal.
+// Returns score[impact-1][likelihood-1]
+function buildMatrix(n){
+  const score = Array.from({length:n},()=>Array(n).fill(0));
+  let c=1;
+  for(let d=2; d<=2*n; d++){
+    for(let i=1;i<=n;i++){           // i ascending => impact ascending => higher number to higher impact
+      const l=d-i;
+      if(l>=1 && l<=n){ score[i-1][l-1]=c++; }
+    }
+  }
+  return score;
+}
+function bandOf(scoreVal, n){
+  const f = scoreVal/(n*n);
+  if(f<=THRESH.tol) return 'green';
+  if(f<=THRESH.unacc) return 'amber';
+  return 'red';
+}
+const BAND_COLOR = {green:getCss('--green'), amber:getCss('--amber'), red:getCss('--red')};
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+// Map a base 1-5 level to the current N-level scale (keeps 5x5 & 7x7 comparable)
+function toN(level5, n){
+  const frac=(level5-1)/4;
+  return Math.min(n, Math.max(1, Math.round(frac*(n-1))+1));
+}
+function normWeights(){
+  const t=weights.people+weights.place+weights.environment+weights.economy || 1;
+  return {people:weights.people/t, place:weights.place/t, environment:weights.environment/t, economy:weights.economy/t};
+}
+
+// Per-scenario results for current N & lens settings
+function compute(){
+  const mat=buildMatrix(N);
+  const w=normWeights();
+  return SCENARIOS.map(s=>{
+    const lk=toN(s.like,N);
+    const lensScore={}, lensImpactN={};
+    LENSES.forEach(L=>{ const imp=toN(s[L],N); lensImpactN[L]=imp; lensScore[L]=mat[imp-1][lk-1]; });
+    // combined impact level (weighted) then look up; also weighted score
+    const combImpactN = Math.min(N,Math.max(1,Math.round(LENSES.reduce((a,L)=>a+lensImpactN[L]*w[L],0))));
+    const combScore = mat[combImpactN-1][lk-1];
+    const shownImpact = lens==='combined'? combImpactN : lensImpactN[lens];
+    const shownScore  = lens==='combined'? combScore   : lensScore[lens];
+    return {s, lk, lensScore, lensImpactN, combImpactN, combScore, shownImpact, shownScore,
+            band:bandOf(shownScore,N), max:N*N};
+  });
+}
+
+/* ---------- Renderers ---------- */
+const tip=document.getElementById('tip');
+function showTip(html,e){ tip.innerHTML=html; tip.style.opacity=1; moveTip(e); }
+function moveTip(e){ tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; }
+function hideTip(){ tip.style.opacity=0; }
+
+function renderMatrix(results){
+  const mat=buildMatrix(N);
+  const tbl=document.getElementById('matrixTable');
+  document.getElementById('matrixTag').textContent = N+' × '+N+' · impact-biased';
+  // group markers by cell
+  const cellMarkers={};
+  results.forEach((r,idx)=>{
+    const key=(r.shownImpact-1)+','+(r.lk-1);
+    (cellMarkers[key]=cellMarkers[key]||[]).push(idx+1);
+  });
+  let html='';
+  for(let l=N;l>=1;l--){
+    html+='<tr>';
+    html+='<td class="axis">'+l+'</td>';
+    for(let i=1;i<=N;i++){
+      const sc=mat[i-1][l-1];
+      const band=bandOf(sc,N);
+      const key=(i-1)+','+(l-1);
+      const markers=cellMarkers[key]||[];
+      const mk = markers.map(m=>'<span class="marker">'+m+'</span>').join('');
+      html+='<td style="background:'+BAND_COLOR[band]+'" title="impact '+i+' × likelihood '+l+' = '+sc+'">'
+           +'<span style="opacity:.55;font-size:.7rem">'+sc+'</span>'
+           +(mk?'<span class="dot">'+mk+'</span>':'')+'</td>';
+    }
+    html+='</tr>';
+  }
+  // bottom axis numbers
+  html+='<tr><td class="corner"></td>';
+  for(let i=1;i<=N;i++) html+='<td class="axis">'+i+'</td>';
+  html+='</tr>';
+  tbl.innerHTML=html;
+}
+
+function renderCurve(results){
+  document.getElementById('curveTag').textContent=LENS_LABEL[lens];
+  const W=520,H=380, padL=58,padR=18,padT=20,padB=52;
+  const x0=padL,x1=W-padR,y0=H-padB,y1=padT;
+  const sx=v=> x0+(v-1)/(N-1)*(x1-x0);       // impact 1..N
+  const sy=v=> y0-(v-1)/(N-1)*(y0-y1);       // likelihood 1..N
+  let s='';
+  // background bands (iso-risk via matrix) - light wash using matrix score
+  const mat=buildMatrix(N);
+  const cw=(x1-x0)/(N), chh=(y0-y1)/(N);
+  for(let i=1;i<=N;i++) for(let l=1;l<=N;l++){
+    const band=bandOf(mat[i-1][l-1],N);
+    const cx=x0+(i-1)/(N-1)*(x1-x0), cy=y0-(l-1)/(N-1)*(y0-y1);
+    s+=`<rect x="${cx-cw/2}" y="${cy-chh/2}" width="${cw}" height="${chh}" fill="${BAND_COLOR[band]}" opacity="0.12"/>`;
+  }
+  // axes
+  s+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#bbb"/>`;
+  s+=`<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#bbb"/>`;
+  for(let i=1;i<=N;i++) s+=`<text x="${sx(i)}" y="${y0+18}" text-anchor="middle" font-size="11" fill="#666">${i}</text>`;
+  for(let l=1;l<=N;l++) s+=`<text x="${x0-10}" y="${sy(l)+4}" text-anchor="end" font-size="11" fill="#666">${l}</text>`;
+  s+=`<text x="${(x0+x1)/2}" y="${H-12}" text-anchor="middle" font-size="12" fill="#444" font-weight="600">Consequence (impact level)</text>`;
+  s+=`<text transform="translate(16,${(y0+y1)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="#444" font-weight="600">Likelihood</text>`;
+  // sort points by impact then likelihood desc for a clean curve
+  const pts=results.map(r=>({x:sx(r.shownImpact), y:sy(r.lk), r}))
+                   .sort((a,b)=> a.r.shownImpact-b.r.shownImpact || b.r.lk-a.r.lk);
+  // envelope area + line
+  if(pts.length){
+    let d=`M ${pts[0].x} ${y0} `;
+    pts.forEach(p=> d+=`L ${p.x} ${p.y} `);
+    d+=`L ${pts[pts.length-1].x} ${y0} Z`;
+    s+=`<path d="${d}" fill="${getCss('--bfrs')}" opacity="0.08"/>`;
+    let dl=`M ${pts[0].x} ${pts[0].y} `;
+    pts.forEach((p,i)=>{ if(i) dl+=`L ${p.x} ${p.y} `; });
+    s+=`<path d="${dl}" fill="none" stroke="${getCss('--bfrs')}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  }
+  // points
+  pts.forEach(p=>{
+    const r=p.r, rad=7+ (r.shownScore/r.max)*9;
+    s+=`<circle class="pt" cx="${p.x}" cy="${p.y}" r="${rad}" fill="${BAND_COLOR[r.band]}" stroke="#fff" stroke-width="2"
+         data-i="${results.indexOf(r)}"/>`;
+    s+=`<text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${results.indexOf(r)+1}</text>`;
+  });
+  const svg=document.getElementById('curve'); svg.innerHTML=s;
+  svg.querySelectorAll('.pt').forEach(c=>{
+    c.style.cursor='pointer';
+    c.addEventListener('mousemove',e=>{
+      const r=results[+c.dataset.i];
+      showTip(`<b>${r.s.n}</b><br>Likelihood: ${r.lk}/${N} · Impact: ${r.shownImpact}/${N}<br>
+        ${LENS_LABEL[lens]} score: <b>${r.shownScore}</b>/${r.max} (${pct(r.shownScore,r.max)})<br>
+        <span style="opacity:.8">indicative frequency: ${r.s.freq}</span>`,e);
+    });
+    c.addEventListener('mouseleave',hideTip);
+  });
+}
+function pct(v,m){ return Math.round(v/m*100)+'%'; }
+
+function renderKPIs(results){
+  const w=normWeights();
+  // overall combined risk for the hazard = frequency-weighted? show key descriptors
+  const top = [...results].sort((a,b)=>b.combScore-a.combScore)[0];
+  const tail = results.filter(r=>r.combImpactN>=Math.ceil(N*0.6)); // higher-consequence tail
+  const tailShare = Math.round(tail.length/results.length*100);
+  const area = results.reduce((a,r)=>a+r.shownScore,0); // crude integral / profile size
+  document.getElementById('kpis').innerHTML=`
+    <div class="box"><b>${results.length}</b><small>outcomes on the dwelling-fire curve</small></div>
+    <div class="box"><b>${top.combScore}</b><small>peak combined score — "${top.s.n}"</small></div>
+    <div class="box"><b>${tailShare}%</b><small>of outcomes sit in the high-consequence tail</small></div>
+    <div class="box"><b>${area}</b><small>profile size (Σ ${LENS_LABEL[lens].toLowerCase()} scores)</small></div>
+    <div class="box"><b>${weights.people>=Math.max(weights.place,weights.environment,weights.economy)?'People':'mixed'}</b>
+      <small>most-weighted lens (${Math.round(w.people*100)}/${Math.round(w.place*100)}/${Math.round(w.environment*100)}/${Math.round(w.economy*100)})</small></div>`;
+}
+
+function renderDataTable(results){
+  const t=document.getElementById('dataTable');
+  let h='<thead><tr><th class="name">#  Dwelling-fire outcome</th><th>Likelihood</th>'
+       +'<th>People</th><th>Place</th><th>Env</th><th>Economy</th>'
+       +'<th>'+LENS_LABEL[lens]+' score</th><th>Band</th></tr></thead><tbody>';
+  results.forEach((r,idx)=>{
+    h+='<tr><td class="name">'+(idx+1)+'. '+r.s.n+'</td>';
+    h+='<td>'+sel('like',idx,r.s.like)+'</td>';
+    LENSES.forEach(L=> h+='<td>'+sel(L,idx,r.s[L])+'</td>');
+    h+='<td class="scorebadge" style="color:'+BAND_COLOR[r.band]+'">'+r.shownScore+' / '+r.max+'</td>';
+    h+='<td><span class="sw" style="background:'+BAND_COLOR[r.band]+'"></span></td></tr>';
+  });
+  h+='</tbody>';
+  t.innerHTML=h;
+  t.querySelectorAll('select').forEach(se=> se.addEventListener('change',e=>{
+    const {field,idx}=e.target.dataset; SCENARIOS[+idx][field]=+e.target.value; refresh();
+  }));
+}
+function sel(field,idx,val){
+  let o='';
+  for(let v=1;v<=5;v++) o+='<option value="'+v+'"'+(v==val?' selected':'')+'>'+v+'</option>';
+  return '<select data-field="'+field+'" data-idx="'+idx+'">'+o+'</select>';
+}
+
+function renderCompare(){
+  const t=document.getElementById('cmpTable');
+  const m5=buildMatrix(5), m7=buildMatrix(7), w=normWeights();
+  const rows=SCENARIOS.map(s=>{
+    function comb(n,mat){
+      const lk=toN(s.like,n);
+      const ci=Math.min(n,Math.max(1,Math.round(LENSES.reduce((a,L)=>a+toN(s[L],n)*w[L],0))));
+      return mat[ci-1][lk-1];
+    }
+    const c5=comb(5,m5), c7=comb(7,m7);
+    return {n:s.n, p5:c5/25, p7:c7/49, c5, c7};
+  });
+  // rank in each
+  const r5=[...rows].sort((a,b)=>b.c5-a.c5), r7=[...rows].sort((a,b)=>b.c7-a.c7);
+  rows.forEach(r=>{ r.rank5=r5.indexOf(r)+1; r.rank7=r7.indexOf(r)+1; });
+  let h='<thead><tr><th class="name">Outcome</th><th>5×5 score</th><th>5×5 rank</th>'
+       +'<th>7×7 score</th><th>7×7 rank</th><th class="bar-cell">5×5 vs 7×7 (% of max)</th><th>Rank shift</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const shift=r.rank5-r.rank7;
+    const shiftTxt= shift===0?'—':(shift>0?'▲ '+shift:'▼ '+Math.abs(shift));
+    const shiftCol= shift===0?'#999':(shift>0?'var(--green)':'var(--red)');
+    h+='<tr><td class="name">'+r.n+'</td>'
+      +'<td>'+r.c5+'/25</td><td>'+r.rank5+'</td>'
+      +'<td>'+r.c7+'/49</td><td>'+r.rank7+'</td>'
+      +'<td class="bar-cell">'
+        +'<span class="bar" style="width:'+(r.p5*120)+'px;opacity:.55"></span> '
+        +'<span class="bar" style="width:'+(r.p7*120)+'px"></span></td>'
+      +'<td style="color:'+shiftCol+';font-weight:700">'+shiftTxt+'</td></tr>';
+  });
+  h+='</tbody>';
+  t.innerHTML=h;
+}
+
+function renderDefs(){
+  const t=document.getElementById('defTable');
+  let h='<thead><tr><th>Level</th><th class="name">People (life)</th><th class="name">Place (property)</th>'
+       +'<th class="name">Environment</th><th class="name">Economy</th></tr></thead><tbody>';
+  for(let v=0;v<5;v++){
+    h+='<tr><td><b>'+(v+1)+'</b></td>'
+      +'<td class="name">'+DEF5.people[v]+'</td>'
+      +'<td class="name">'+DEF5.place[v]+'</td>'
+      +'<td class="name">'+DEF5.environment[v]+'</td>'
+      +'<td class="name">'+DEF5.economy[v]+'</td></tr>';
+  }
+  h+='</tbody>';
+  t.innerHTML=h;
+}
+
+/* ---------- Wire-up ---------- */
+function refresh(){
+  const results=compute();
+  renderMatrix(results);
+  renderCurve(results);
+  renderKPIs(results);
+  renderDataTable(results);
+  renderCompare();
+}
+document.getElementById('sizeSeg').addEventListener('click',e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  N=+e.target.dataset.n;
+  [...e.currentTarget.children].forEach(b=>b.classList.toggle('active', b===e.target));
+  refresh();
+});
+document.getElementById('lensSel').addEventListener('change',e=>{ lens=e.target.value; refresh(); });
+function wireW(id,key,vid){
+  document.getElementById(id).addEventListener('input',e=>{
+    weights[key]=+e.target.value; document.getElementById(vid).textContent=e.target.value+'%'; refresh();
+  });
+}
+wireW('wPeople','people','wPeopleV'); wireW('wPlace','place','wPlaceV');
+wireW('wEnv','environment','wEnvV'); wireW('wEco','economy','wEcoV');
+window.addEventListener('mousemove',e=>{ if(tip.style.opacity==1) moveTip(e); });
+
+renderDefs();
+refresh();
+</script>
+</body>
+</html>
