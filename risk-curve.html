@@ -254,9 +254,10 @@
       <div class="card-header"><span>Risk curve</span><span class="pill" id="curveTag">Combined</span></div>
       <div class="card-body">
         <svg id="curve" viewBox="0 0 520 380" width="100%" style="max-height:420px"></svg>
-        <p class="lead">Each point is a dwelling-fire outcome. The curve runs from <b>high-frequency / low-consequence</b>
-        (top-left) down to <b>low-frequency / high-consequence</b> (bottom-right). Bubble colour = matrix risk band;
-        the shaded area is the risk-profile envelope. Hover a point for detail.</p>
+        <p class="lead">A <b>risk profile (F&ndash;N) curve</b>: each numbered point is a dwelling-fire outcome, ordered by
+        increasing consequence. The y-axis is the <b>share of dwelling fires that severe or worse</b> (log scale), so the line
+        always slopes <b>down</b> — from frequent/low-consequence (top-left) to rare/high-consequence (bottom-right). Bubble
+        colour = matrix risk band. Hover a point for detail.</p>
       </div>
     </div>
   </div>
@@ -371,7 +372,7 @@ let SCENARIOS = [
   {n:'Out on arrival / no fire damage',         like:5, people:1, place:1, environment:1, economy:1, freq:'high',      share:18.9, veh:1.9, ff:7.2},
   {n:'Small fire, contained, no injury',        like:5, people:1, place:2, environment:1, economy:1, freq:'very high', share:59.2, veh:2.3, ff:8.5},
   {n:'Fire to room of origin, no injury',       like:5, people:1, place:3, environment:1, economy:2, freq:'high',      share:16.0, veh:5.0, ff:14.8},
-  {n:'Property damage; first-aid casualty',     like:3, people:1, place:2, environment:1, economy:1, freq:'low',       share:0.9,  veh:2.8, ff:10.1},
+  {n:'Property damage; first-aid casualty',     like:3, people:2, place:2, environment:1, economy:1, freq:'low',       share:0.9,  veh:2.8, ff:10.1},
   {n:'Casualty needs hospital treatment',       like:4, people:2, place:2, environment:1, economy:2, freq:'moderate',  share:3.6,  veh:3.6, ff:11.7},
   {n:'Life-threatening injury / rescue',        like:3, people:3, place:3, environment:1, economy:2, freq:'low',       share:0.8,  veh:4.3, ff:12.3},
   {n:'Single fatality',                         like:2, people:4, place:2, environment:1, economy:2, freq:'rare',      share:0.2,  veh:8.0, ff:17.0},
@@ -491,66 +492,55 @@ function renderMatrix(results){
 }
 
 function renderCurve(results){
-  document.getElementById('curveTag').textContent=LENS_LABEL[lens];
-  const W=520,H=380, padL=58,padR=18,padT=20,padB=52;
+  document.getElementById('curveTag').textContent=LENS_LABEL[lens]+' · risk profile';
+  const W=520,H=380, padL=60,padR=22,padT=46,padB=56;
   const x0=padL,x1=W-padR,y0=H-padB,y1=padT;
-  const sx=v=> x0+(v-1)/(N-1)*(x1-x0);       // impact 1..N
-  const sy=v=> y0-(v-1)/(N-1)*(y0-y1);       // likelihood 1..N
+  // F-N (exceedance) risk profile: y = % of dwelling fires this severe or worse, log scale -> always descends
+  const fmin=0.03, fmax=100, lf=Math.log10(fmax)-Math.log10(fmin);
+  const ordered=[...results].sort((a,b)=> a.shownImpact-b.shownImpact || b.s.share-a.s.share);
+  const n=ordered.length;
+  const exc=new Array(n); let acc=0;
+  for(let i=n-1;i>=0;i--){ acc+=ordered[i].s.share; exc[i]=acc; }
+  const iL=x0+10, iR=x1-10;
+  const px=i=> iL + (n<=1?0.5:i/(n-1))*(iR-iL);
+  const py=e=> y0 - (Math.log10(Math.max(e,fmin))-Math.log10(fmin))/lf*(y0-y1);
   let s='';
-  // background bands (iso-risk via matrix) - light wash using matrix score
-  const mat=buildMatrix(N);
-  const cw=(x1-x0)/(N), chh=(y0-y1)/(N);
-  for(let i=1;i<=N;i++) for(let l=1;l<=N;l++){
-    const band=bandOf(mat[i-1][l-1],N);
-    const cx=x0+(i-1)/(N-1)*(x1-x0), cy=y0-(l-1)/(N-1)*(y0-y1);
-    s+=`<rect x="${cx-cw/2}" y="${cy-chh/2}" width="${cw}" height="${chh}" fill="${BAND_COLOR[band]}" opacity="0.12"/>`;
-  }
-  // axes
+  // frequency gridlines
+  [100,10,1,0.1].forEach(f=>{ const yy=py(f);
+    s+=`<line x1="${x0}" y1="${yy}" x2="${x1}" y2="${yy}" stroke="#eee"/>`;
+    s+=`<text x="${x0-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#999">${f}%</text>`; });
   s+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#bbb"/>`;
   s+=`<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#bbb"/>`;
-  for(let i=1;i<=N;i++) s+=`<text x="${sx(i)}" y="${y0+18}" text-anchor="middle" font-size="11" fill="#666">${i}</text>`;
-  for(let l=1;l<=N;l++) s+=`<text x="${x0-10}" y="${sy(l)+4}" text-anchor="end" font-size="11" fill="#666">${l}</text>`;
-  s+=`<text x="${(x0+x1)/2}" y="${H-12}" text-anchor="middle" font-size="12" fill="#444" font-weight="600">Consequence (impact level)</text>`;
-  s+=`<text transform="translate(16,${(y0+y1)/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="#444" font-weight="600">Likelihood</text>`;
-  // sort points by impact then likelihood desc for a clean curve
-  const pts=results.map(r=>({x:sx(r.shownImpact), y:sy(r.lk), r}))
-                   .sort((a,b)=> a.r.shownImpact-b.r.shownImpact || b.r.lk-a.r.lk);
-  // envelope area + line
-  if(pts.length){
-    let d=`M ${pts[0].x} ${y0} `;
-    pts.forEach(p=> d+=`L ${p.x} ${p.y} `);
-    d+=`L ${pts[pts.length-1].x} ${y0} Z`;
-    s+=`<path d="${d}" fill="${getCss('--bfrs')}" opacity="0.08"/>`;
-    let dl=`M ${pts[0].x} ${pts[0].y} `;
-    pts.forEach((p,i)=>{ if(i) dl+=`L ${p.x} ${p.y} `; });
-    s+=`<path d="${dl}" fill="none" stroke="${getCss('--bfrs')}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  }
-  // points
-  pts.forEach(p=>{
-    const r=p.r, rad=7+ (r.shownScore/r.max)*9;
-    s+=`<circle class="pt" cx="${p.x}" cy="${p.y}" r="${rad}" fill="${BAND_COLOR[r.band]}" stroke="#fff" stroke-width="2"
-         data-i="${results.indexOf(r)}"/>`;
-    s+=`<text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${results.indexOf(r)+1}</text>`;
+  s+=`<text x="${(x0+x1)/2}" y="${H-12}" text-anchor="middle" font-size="11.5" fill="#444" font-weight="600">Increasing consequence  &#8594;  (impact level below each point)</text>`;
+  s+=`<text transform="translate(14,${(y0+y1)/2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#444" font-weight="600">Share of fires this severe or worse</text>`;
+  // shaded area + descending line
+  let dl='', da=`M ${px(0)} ${y0} `;
+  ordered.forEach((r,i)=>{ const X=px(i),Y=py(exc[i]); dl+=(i?'L':'M')+`${X} ${Y} `; da+=`L ${X} ${Y} `; });
+  da+=`L ${px(n-1)} ${y0} Z`;
+  s+=`<path d="${da}" fill="${getCss('--bfrs')}" opacity="0.07"/>`;
+  s+=`<path d="${dl}" fill="none" stroke="${getCss('--bfrs')}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  // numbered points sitting on the curve
+  ordered.forEach((r,i)=>{ const X=px(i),Y=py(exc[i]); const num=results.indexOf(r)+1;
+    s+=`<text x="${X}" y="${y0+16}" text-anchor="middle" font-size="10" fill="#aaa">${r.shownImpact}</text>`;
+    s+=`<circle class="pt" cx="${X}" cy="${Y}" r="11" fill="${BAND_COLOR[r.band]}" stroke="#fff" stroke-width="2" data-i="${results.indexOf(r)}" data-exc="${exc[i].toFixed(2)}"/>`;
+    s+=`<text x="${X}" y="${Y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${num}</text>`;
   });
-  // Ian's single-point method overlay: one frequency-weighted point for the whole incident type
+  // Ian's single-point method: the whole incident type as ONE frequent point -> misses the descending tail
   if(showIan){
-    let wsum=0, isum=0;
-    results.forEach(r=>{ const fw=FREQW[r.s.freq]||1; wsum+=fw; isum+=fw*r.combImpactN; });
-    const ianImpact=Math.max(1,Math.min(N, isum/wsum));   // averaged consequence -> hides the severe tail
-    const ix=sx(ianImpact), iy=sy(N);                     // dwelling fires overall are frequent -> top of scale
-    const d=10;
+    let wsum=0,isum=0; results.forEach(r=>{ const fw=FREQW[r.s.freq]||1; wsum+=fw; isum+=fw*r.shownImpact; });
+    const ianImpact=Math.max(1,Math.min(N, isum/wsum));
+    const ix=iL+((ianImpact-1)/(N-1))*(iR-iL), iy=py(100), d=9;
     s+=`<path class="ian" d="M ${ix} ${iy-d} L ${ix+d} ${iy} L ${ix} ${iy+d} L ${ix-d} ${iy} Z" fill="#27326e" stroke="#fff" stroke-width="2"/>`;
-    s+=`<text x="${ix}" y="${iy-d-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#27326e">Single averaged point</text>`;
-    s+=`<text x="${ix}" y="${iy-d-19}" text-anchor="middle" font-size="9" fill="#5b6699">(averages out the fatal tail)</text>`;
+    s+=`<text x="${ix+d+6}" y="${iy-1}" font-size="10.5" font-weight="700" fill="#27326e">Single averaged point</text>`;
+    s+=`<text x="${ix+d+6}" y="${iy+11}" font-size="9" fill="#5b6699">treats every fire as one &mdash; misses the tail</text>`;
   }
   const svg=document.getElementById('curve'); svg.innerHTML=s;
   svg.querySelectorAll('.pt').forEach(c=>{
     c.style.cursor='pointer';
     c.addEventListener('mousemove',e=>{
       const r=results[+c.dataset.i];
-      showTip(`<b>${r.s.n}</b><br>Likelihood: ${r.lk}/${N} · Impact: ${r.shownImpact}/${N}<br>
-        ${LENS_LABEL[lens]} score: <b>${r.shownScore}</b>/${r.max} (${pct(r.shownScore,r.max)})<br>
-        <span style="opacity:.8">indicative frequency: ${r.s.freq}</span>`,e);
+      showTip(`<b>${r.s.n}</b><br>Share of all dwelling fires: ${r.s.share}%<br>This severe or worse: <b>${c.dataset.exc}%</b><br>
+        ${LENS_LABEL[lens]} score ${r.shownScore}/${r.max} &middot; consequence ${r.shownImpact}/${N}`,e);
     });
     c.addEventListener('mouseleave',hideTip);
   });
