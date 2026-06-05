@@ -324,8 +324,10 @@
     <div class="card-header">Impact definitions (from the agreed matrix)</div>
     <div class="card-body" style="overflow:auto">
       <table id="defTable"></table>
-      <p class="lead" style="margin-top:.5rem">People, Place and Economy levels are lifted directly from the draft matrix.
-      Environment matches Ian's earlier wording. 7-level rows are interpolated placeholders for discussion.
+      <p class="lead" style="margin-top:.5rem">Place and Economy levels are lifted directly from the draft matrix; Environment
+      matches Ian's earlier wording. <b>People has been adjusted</b> so that <b>level 1 = no injury</b> and <b>level 2 = any
+      injury</b> (first aid or hospital) — in the agreed draft, level 1 read "first-aid case or no injury", which scored a
+      harmed person the same as an unharmed one. This change needs the group's ratification.
       <b>Open question:</b> the 2022 ACRL and the 5 June minutes both treat <b>FRS response / resource impact</b> as
       significant — the group needs to decide whether that becomes a <b>fifth lens</b> here.</p>
     </div>
@@ -350,7 +352,7 @@ const LENS_LABEL = {people:'People (life)', place:'Place (property)', environmen
 
 // Impact definitions on the 5-level scale (from the draft matrix / Ian's wording)
 const DEF5 = {
-  people:['First aid case or no injury','Medical treatment','Life-threatening injury','Loss of a life','Loss of multiple lives'],
+  people:['No injury','Injury — first aid or hospital treatment','Life-threatening / serious injury','Loss of a life','Loss of multiple lives'],
   place:['Limited property damage','Fire limited to compartment of origin; single vehicle; no heritage impact',
          'Fire & smoke damage to entire property; replacement cost ~£100k','Heritage loss / several properties or a significant employer; damage >£100k',
          'Loss of several homes (10+) / heritage loss; property or vehicles >£1m'],
