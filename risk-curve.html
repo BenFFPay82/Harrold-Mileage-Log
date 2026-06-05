@@ -255,9 +255,10 @@
       <div class="card-body">
         <svg id="curve" viewBox="0 0 520 380" width="100%" style="max-height:420px"></svg>
         <p class="lead">A <b>risk profile (F&ndash;N) curve</b>: each numbered point is a dwelling-fire outcome, ordered by
-        increasing consequence. The y-axis is the <b>share of dwelling fires that severe or worse</b> (log scale), so the line
-        always slopes <b>down</b> — from frequent/low-consequence (top-left) to rare/high-consequence (bottom-right). Bubble
-        colour = matrix risk band. Hover a point for detail.</p>
+        increasing consequence. The y-axis is the <b>expected number of dwelling fires per year that severe or worse</b> (log
+        scale), so the line always slopes <b>down</b>. The <b>Area</b> selector scales the whole curve up or down — the
+        most-deprived fifth sees more fires at every severity, the least-deprived fewer (the shape stays the same because the
+        severity mix is broadly constant). Bubble colour = matrix risk band. Hover a point for detail.</p>
       </div>
     </div>
   </div>
@@ -498,23 +499,25 @@ function renderCurve(results){
   const W=520,H=380, padL=60,padR=22,padT=46,padB=56;
   const x0=padL,x1=W-padR,y0=H-padB,y1=padT;
   // F-N (exceedance) risk profile: y = % of dwelling fires this severe or worse, log scale -> always descends
-  const fmin=0.03, fmax=100, lf=Math.log10(fmax)-Math.log10(fmin);
+  const fmin=0.01, fmax=400, lf=Math.log10(fmax)-Math.log10(fmin);
   const ordered=[...results].sort((a,b)=> a.shownImpact-b.shownImpact || b.s.share-a.s.share);
   const n=ordered.length;
   const exc=new Array(n); let acc=0;
   for(let i=n-1;i>=0;i--){ acc+=ordered[i].s.share; exc[i]=acc; }
+  const fires=QDATA[scope].fires;                 // scale share% -> expected fires/yr for the chosen IMD area
+  for(let i=0;i<n;i++) exc[i]=exc[i]/100*fires;
   const iL=x0+10, iR=x1-10;
   const px=i=> iL + (n<=1?0.5:i/(n-1))*(iR-iL);
   const py=e=> y0 - (Math.log10(Math.max(e,fmin))-Math.log10(fmin))/lf*(y0-y1);
   let s='';
   // frequency gridlines
-  [100,10,1,0.1].forEach(f=>{ const yy=py(f);
+  [100,10,1,0.1,0.01].forEach(f=>{ const yy=py(f);
     s+=`<line x1="${x0}" y1="${yy}" x2="${x1}" y2="${yy}" stroke="#eee"/>`;
-    s+=`<text x="${x0-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#999">${f}%</text>`; });
+    s+=`<text x="${x0-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#999">${f}</text>`; });
   s+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#bbb"/>`;
   s+=`<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#bbb"/>`;
   s+=`<text x="${(x0+x1)/2}" y="${H-12}" text-anchor="middle" font-size="11.5" fill="#444" font-weight="600">Increasing consequence  &#8594;  (impact level below each point)</text>`;
-  s+=`<text transform="translate(14,${(y0+y1)/2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#444" font-weight="600">Share of fires this severe or worse</text>`;
+  s+=`<text transform="translate(14,${(y0+y1)/2}) rotate(-90)" text-anchor="middle" font-size="11" fill="#444" font-weight="600">Dwelling fires / year, this severe or worse</text>`;
   // shaded area + descending line
   let dl='', da=`M ${px(0)} ${y0} `;
   ordered.forEach((r,i)=>{ const X=px(i),Y=py(exc[i]); dl+=(i?'L':'M')+`${X} ${Y} `; da+=`L ${X} ${Y} `; });
@@ -524,14 +527,14 @@ function renderCurve(results){
   // numbered points sitting on the curve
   ordered.forEach((r,i)=>{ const X=px(i),Y=py(exc[i]); const num=results.indexOf(r)+1;
     s+=`<text x="${X}" y="${y0+16}" text-anchor="middle" font-size="10" fill="#aaa">${r.shownImpact}</text>`;
-    s+=`<circle class="pt" cx="${X}" cy="${Y}" r="11" fill="${BAND_COLOR[r.band]}" stroke="#fff" stroke-width="2" data-i="${results.indexOf(r)}" data-exc="${exc[i].toFixed(2)}"/>`;
+    s+=`<circle class="pt" cx="${X}" cy="${Y}" r="11" fill="${BAND_COLOR[r.band]}" stroke="#fff" stroke-width="2" data-i="${results.indexOf(r)}" data-exc="${exc[i]<1?exc[i].toFixed(2):Math.round(exc[i])}"/>`;
     s+=`<text x="${X}" y="${Y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" pointer-events="none">${num}</text>`;
   });
   // Ian's single-point method: the whole incident type as ONE frequent point -> misses the descending tail
   if(showIan){
     let wsum=0,isum=0; results.forEach(r=>{ const fw=FREQW[r.s.freq]||1; wsum+=fw; isum+=fw*r.shownImpact; });
     const ianImpact=Math.max(1,Math.min(N, isum/wsum));
-    const ix=iL+((ianImpact-1)/(N-1))*(iR-iL), iy=py(100), d=9;
+    const ix=iL+((ianImpact-1)/(N-1))*(iR-iL), iy=py(QDATA[scope].fires), d=9;
     s+=`<path class="ian" d="M ${ix} ${iy-d} L ${ix+d} ${iy} L ${ix} ${iy+d} L ${ix-d} ${iy} Z" fill="#27326e" stroke="#fff" stroke-width="2"/>`;
     s+=`<text x="${ix+d+6}" y="${iy-1}" font-size="10.5" font-weight="700" fill="#27326e">Single averaged point</text>`;
     s+=`<text x="${ix+d+6}" y="${iy+11}" font-size="9" fill="#5b6699">treats every fire as one &mdash; misses the tail</text>`;
@@ -541,7 +544,7 @@ function renderCurve(results){
     c.style.cursor='pointer';
     c.addEventListener('mousemove',e=>{
       const r=results[+c.dataset.i];
-      showTip(`<b>${r.s.n}</b><br>Share of all dwelling fires: ${r.s.share}%<br>This severe or worse: <b>${c.dataset.exc}%</b><br>
+      showTip(`<b>${r.s.n}</b><br>Share of all dwelling fires: ${r.s.share}%<br>This severe or worse: <b>${c.dataset.exc}/yr</b><br>
         ${LENS_LABEL[lens]} score ${r.shownScore}/${r.max} &middot; consequence ${r.shownImpact}/${N}`,e);
     });
     c.addEventListener('mouseleave',hideTip);
