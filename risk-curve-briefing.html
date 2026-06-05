@@ -76,14 +76,14 @@
       <h1>Risk Curve Visualiser</h1>
       <p>How to use it — a quick guide for the Community Risk Analysis group</p>
     </div>
-    <span class="tag">Proof of concept</span>
+    <span class="tag">Working model · real data</span>
   </div>
 
   <p class="intro">This is an interactive tool that <b>visualises the risk-curve idea</b> for the Community Risk Analysis,
-  tested on <b>dwelling fires</b>. Instead of treating a dwelling fire as one average risk, it spreads the full range of
-  outcomes — from a pan fire that is out on arrival, to a fire that takes multiple lives — across a <b>likelihood × consequence</b>
-  curve, so the rare-but-serious events stay visible. Use it to explore how different scoring choices change the picture before we
-  agree a method for the next CRMP.</p>
+  now driven by <b>real Bedfordshire data</b> — 1,624 dwelling fires (May 2021–May 2026). Instead of treating a dwelling fire as
+  one average risk, it spreads the full range of outcomes — from a fire that is out on arrival, to one that takes multiple lives —
+  and plots them as a <b>risk profile</b> that slopes down from frequent/low-consequence to rare/high-consequence, so the
+  rare-but-serious events stay visible. Use it to explore how scoring choices change the picture before agreeing a method for the next CRMP.</p>
 
   <div class="cols">
     <!-- LEFT -->
@@ -98,6 +98,7 @@
       <h2>The controls (top of the page)</h2>
       <ul>
         <li><span class="ctrl">Matrix format</span> — switch between a <b>5&nbsp;×&nbsp;5</b> and <b>7&nbsp;×&nbsp;7</b> grid to test whether the format changes the answer.</li>
+        <li><span class="ctrl">Area (IMD quintile)</span> — focus on a deprivation quintile; the headline volumes and the curve rescale to that area (the most-deprived fifth has ~2.5&times; the fire rate).</li>
         <li><span class="ctrl">Lens shown</span> — view risk through one lens (People, Place, Environment, Economy) or the <b>Combined</b> view.</li>
         <li><span class="ctrl">Combine method</span> — how the four lenses become one score (weighted average, weighted impact, or worst-lens).</li>
         <li><span class="ctrl">Weight sliders</span> — set your <b>risk appetite</b>, e.g. weight People above property. They adjust everything live.</li>
@@ -107,8 +108,8 @@
 
       <h2>Editing the data</h2>
       <ul>
-        <li>Every likelihood and consequence value in the <b>data table</b> is a drop-down — change one and the matrix, curve and scores update instantly.</li>
-        <li>The figures shipped with the tool are <b>illustrative placeholders</b>; real CRA-database numbers get plugged in here.</li>
+        <li>The data table holds the <b>real measured values</b> — each outcome's share of fires, mean appliances and firefighters, and the four lens levels.</li>
+        <li>Every likelihood and consequence value is still a <b>drop-down</b>, so you can test sensitivity — the matrix, curve and scores update instantly.</li>
       </ul>
     </div>
 
@@ -121,9 +122,9 @@
           <span class="chip" style="background:var(--orange)"></span>tolerable with mitigation,
           <span class="chip" style="background:var(--bfrs)"></span>unacceptable.
           Numbered dots are the dwelling-fire outcomes.</li>
-        <li><b>Risk curve</b> — the same outcomes plotted as a curve, from frequent/low-consequence (top-left) to rare/high-consequence
-          (bottom-right). Hover any point for detail.</li>
-        <li><b>Headline figures</b> — quick read-outs for the current settings (peak score, size of the high-consequence tail, most-weighted lens).</li>
+        <li><b>Risk curve</b> — a <b>risk profile</b> sloping down from frequent/low-consequence (top-left) to rare/high-consequence
+          (bottom-right). The y-axis is <b>expected fires per year</b> that severe or worse, so choosing an Area rescales it. Hover any point for detail.</li>
+        <li><b>Headline figures</b> — quick read-outs for the current Area and settings (expected fires/yr, peak score, size of the high-consequence tail).</li>
         <li><b>Compare &amp; contrast table</b> — ranks every outcome under an <b>equal-weight baseline vs the new 5&nbsp;×&nbsp;5 vs 7&nbsp;×&nbsp;7</b>, as a % of each scale’s maximum.</li>
       </ul>
 
@@ -131,14 +132,14 @@
       <ul>
         <li>The 2022 assessment scored each incident type as a <b>single averaged point</b> — averaging hides the rare fatal fires.</li>
         <li>This tool keeps the <b>whole spread</b> visible and lets the matrix <b>lean on consequence</b>, so a rare catastrophe outscores a frequent triviality.</li>
-        <li>Tick the overlay (<span class="chip" style="background:var(--teal)"></span>blue diamond) to see the single averaged point sit low on the curve.</li>
+        <li>Tick the overlay (<span class="chip" style="background:var(--teal)"></span>blue diamond) to see the single averaged point sit at the <b>top</b> — treating every fire as one frequent, mid-severity event and missing the descending tail.</li>
       </ul>
 
       <h2>Please remember</h2>
       <div class="callout">
-        <b>This is a concept visualiser, not a final methodology.</b> The data is illustrative and several choices —
-        likelihood proportions, the combine method, the 7-level definitions and appetite thresholds — are <b>still for the
-        group to agree</b>. Use it to inform that discussion, not to draw conclusions yet.
+        <b>A working model, not a final methodology.</b> The data is real, but several choices are <b>still for the group to
+        agree</b> — the adjusted People definitions (level&nbsp;1 = no injury), the likelihood basis, the combine method, the
+        7-level definitions, appetite thresholds, and whether FRS resource becomes a fifth lens. Use it to inform that discussion.
       </div>
     </div>
   </div>
